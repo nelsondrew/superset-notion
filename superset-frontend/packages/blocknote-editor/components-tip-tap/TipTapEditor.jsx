@@ -161,13 +161,12 @@ const EditorContainer = styled.div`
       font-weight: 500;
       color: #475569;
       text-align: center;
+      position: relative;
 
       &.ProseMirror-selectednode {
-        outline: 2px solid #3b82f6;
+        outline: ${props => props.editMode ? '2px solid #3b82f6' : 'none'};
       }
 
-      position: relative;
-      
       .react-resizable-handle {
         position: absolute;
         width: 8px;
@@ -427,7 +426,8 @@ export const TipTapEditor = ({ editMode }) => {
   return (
     <EditorContainer 
       className="editor-container" 
-      data-editor-focused={editor.isFocused}
+      data-editor-focused={editor?.isFocused}
+      editMode={editMode}
     >
       <MenuBar style={{ display: editMode ? 'flex' : 'none' }}>
         <Button
