@@ -44,6 +44,7 @@ import {
   TABS_TYPE,
   TAB_TYPE,
   DYNAMIC_TYPE,
+  HELLO_TYPE,
 } from './componentTypes';
 
 import { DASHBOARD_ROOT_DEPTH as rootDepth } from './constants';
@@ -70,6 +71,7 @@ const parentMaxDepthLookup: Record<string, Record<string, number>> = {
     [HEADER_TYPE]: depthOne,
     [ROW_TYPE]: depthOne,
     [TABS_TYPE]: depthOne,
+    [HELLO_TYPE]: depthOne,
   },
 
   [ROW_TYPE]: {
@@ -77,6 +79,7 @@ const parentMaxDepthLookup: Record<string, Record<string, number>> = {
     [DYNAMIC_TYPE]: depthFour,
     [MARKDOWN_TYPE]: depthFour,
     [COLUMN_TYPE]: depthFour,
+    [HELLO_TYPE]: depthFour,
   },
 
   [TABS_TYPE]: {
@@ -92,6 +95,7 @@ const parentMaxDepthLookup: Record<string, Record<string, number>> = {
     [HEADER_TYPE]: depthFive,
     [ROW_TYPE]: depthThree,
     [TABS_TYPE]: depthThree,
+    [HELLO_TYPE]: depthFive,
   },
 
   [COLUMN_TYPE]: {
@@ -101,6 +105,7 @@ const parentMaxDepthLookup: Record<string, Record<string, number>> = {
     [ROW_TYPE]: depthThree,
     [DIVIDER_TYPE]: depthThree,
     [TABS_TYPE]: depthThree,
+    [HELLO_TYPE]: depthFive,
   },
 
   // these have no valid children
@@ -109,6 +114,11 @@ const parentMaxDepthLookup: Record<string, Record<string, number>> = {
   [DIVIDER_TYPE]: {},
   [HEADER_TYPE]: {},
   [MARKDOWN_TYPE]: {},
+  [HELLO_TYPE]: {
+    [CHART_TYPE]: depthFour,
+    [MARKDOWN_TYPE]: depthFour,
+    [COLUMN_TYPE]: depthFour,
+  },
 };
 
 interface IsValidChildProps {
