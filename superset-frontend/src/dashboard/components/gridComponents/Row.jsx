@@ -78,6 +78,7 @@ const propTypes = {
   deleteComponent: PropTypes.func.isRequired,
   updateComponents: PropTypes.func.isRequired,
 };
+//Change
 
 const GridRow = styled.div`
   ${({ theme, editMode }) => css`
