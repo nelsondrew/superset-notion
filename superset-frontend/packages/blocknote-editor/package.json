@@ -30,6 +30,7 @@
     "@tiptap/starter-kit": "^2.11.5",
     "@tiptap/suggestion": "^2.11.5",
     "lodash": "^4.17.21",
+    "lucide-react": "^0.475.0",
     "styled-components": "^6.1.15",
     "tippy.js": "^6.3.7"
   }
