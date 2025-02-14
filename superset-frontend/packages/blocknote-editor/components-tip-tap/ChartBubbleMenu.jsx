@@ -115,6 +115,7 @@ export const ChartBubbleMenu = ({ editor }) => {
         tippyOptions={{ 
           duration: 100,
           placement: 'top',
+          zIndex: 999,
           getReferenceClientRect: () => {
             const chartElement = document.querySelector('.ProseMirror-selectednode[data-type="chart"]')
             if (chartElement) {

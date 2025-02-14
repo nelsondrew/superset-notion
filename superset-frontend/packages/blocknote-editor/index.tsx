@@ -13,7 +13,7 @@ const EditorContainer = styled.div`
 
   .ProseMirror {
     padding: 16px;
-    min-height: 200px;
+    min-height: 100vh;
     position: relative;
     
     &:focus {

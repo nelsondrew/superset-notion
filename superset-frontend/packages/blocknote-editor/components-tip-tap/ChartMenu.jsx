@@ -88,7 +88,7 @@ export const ChartMenu = ({ editor }) => {
         offset: [0, 12],
         animation: 'scale',
         duration: 150,
-        zIndex: 99999,
+        zIndex: 9999,
       }}
     >
       <MenuContainer>
