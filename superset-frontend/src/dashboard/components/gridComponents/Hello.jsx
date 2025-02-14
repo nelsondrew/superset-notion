@@ -2,7 +2,7 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import { styled, t } from '@superset-ui/core';
 import { DragDroppable } from '../dnd/DragDroppable';
-import { CHART_TYPE } from '../../util/componentTypes';
+import { CHART_TYPE, PORTABLE_CHART_TYPE } from '../../util/componentTypes';
 import BlockNoteEdtitor from "../../../../packages/blocknote-editor/index"
 import DeleteComponentButton from '../DeleteComponentButton';
 
@@ -43,17 +43,85 @@ const propTypes = {
 };
 
 export default function Hello(props) {
-  const handleDrop = dropResult => {
-    const { component } = props;
+  const handleHover = (hoverProps, monitor) => {
+    // Make sure we have a monitor
+    if (!monitor) return;
     
-    console.log('Chart Drop Event:', {
-      dropResult,
-      componentId: component.id,
-      componentType: component.type,
-      draggedItem: dropResult.dragging,
-      destination: dropResult.destination,
+    if (!monitor.isOver()) return;
+    
+    const clientOffset = monitor.getClientOffset();
+    if (!clientOffset) return;
+
+    // Only handle hover for chart types
+    const itemType = monitor.getItem()?.type;
+    if (itemType !== CHART_TYPE) return;
+
+    // Find all chart elements in the editor
+    const chartElements = document.querySelectorAll('.portable-chart-component');
+    
+    chartElements.forEach(element => {
+      const rect = element.getBoundingClientRect();
+      const isOverChart = (
+        clientOffset.x >= rect.left &&
+        clientOffset.x <= rect.right &&
+        clientOffset.y >= rect.top &&
+        clientOffset.y <= rect.bottom
+      );
+      
+      // Add or remove drag-over class based on hover position
+      if (isOverChart) {
+        element.classList.add('drag-over');
+      } else {
+        element.classList.remove('drag-over');
+      }
     });
+  };
+
+  const handleDrop = (dropResult, monitor) => {
+    // Remove drag-over class from all chart elements
+    document.querySelectorAll('.portable-chart-component').forEach(element => {
+      element.classList.remove('drag-over');
+    });
+
+    console.log("Drop triggered in Hello", dropResult);
+    const { component } = props;
+
+    // Get drop coordinates from monitor
+    const clientOffset = monitor.getClientOffset();
+    if (!clientOffset) {
+      console.log('No client offset found');
+      return;
+    }
+
+    // Find all chart elements in the editor
+    const chartElements = document.querySelectorAll('.portable-chart-component');
     
+    // Find the highlighted chart element and emit event
+    const highlightedChart = Array.from(chartElements).find(element => {
+      const rect = element.getBoundingClientRect();
+      return (
+        clientOffset.x >= rect.left &&
+        clientOffset.x <= rect.right &&
+        clientOffset.y >= rect.top &&
+        clientOffset.y <= rect.bottom
+      );
+    });
+
+    if (!highlightedChart) {
+      console.log('Drop cancelled - not on chart element');
+      return;
+    }
+
+    // Emit custom event with dropResult data
+    const chartDropEvent = new CustomEvent('chart-drop', {
+      detail: {
+        dropResult,
+        targetElement: highlightedChart
+      },
+      bubbles: true
+    });
+    highlightedChart.dispatchEvent(chartDropEvent);
+
     if (!component.children) {
       component.children = [];
     }
@@ -79,16 +147,6 @@ export default function Hello(props) {
     deleteComponent,
   } = props;
 
-  const childrenArray = component.children || [];
-  
-  if (childrenArray.length > 0) {
-    console.log('Hello Component Children:', {
-      componentId: component.id,
-      children: childrenArray,
-      childrenCount: childrenArray.length,
-    });
-  }
-
   const handleDelete = () => {
     deleteComponent(id, parentComponent.id);
   };
@@ -101,11 +159,12 @@ export default function Hello(props) {
       index={index}
       depth={depth}
       onDrop={handleDrop}
+      onHover={handleHover}
       editMode={editMode}
       droppable
       acceptedChildren={[CHART_TYPE]}
     >
-      {({ dropIndicatorProps, dragSourceRef }) => (
+      {({ dragSourceRef }) => (
         <HelloDiv ref={dragSourceRef}>
           {/* <div>HELLO WORLD (Charts absorbed: {childrenArray.length})</div> */}
           <BlockNoteEdtitor/>
@@ -117,7 +176,6 @@ export default function Hello(props) {
               />
             </DeleteButtonContainer>
           )}
-          {dropIndicatorProps && <div {...dropIndicatorProps} />}
         </HelloDiv>
       )}
     </DragDroppable>

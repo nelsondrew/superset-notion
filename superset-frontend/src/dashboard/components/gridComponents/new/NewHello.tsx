@@ -8,7 +8,7 @@ export default function NewHello() {
     <DraggableNewComponent
       id={NEW_HELLO_ID}
       type={HELLO_TYPE}
-      label={t('Hello')}
+      label={t('Pages')}
       className="fa fa-smile-o"
     />
   );

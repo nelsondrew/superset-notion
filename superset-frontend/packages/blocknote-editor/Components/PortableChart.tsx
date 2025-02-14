@@ -12,8 +12,8 @@ interface PortableChartProps {
 
 const ChartWrapper = styled.div`
  .chart-slice {
-  width: ${props => props.width}px !important;
-  height: ${props => props.height}px !important;
+  width: 100%;
+  height: 100%;
  }
 `
 
@@ -23,7 +23,6 @@ export const PortableChart: React.FC<PortableChartProps> = ({
   height = 400,
 }) => {
   const dispatch = useDispatch();
-
   // Ensure width and height are numbers
   const numericWidth = typeof width === 'string' ? parseInt(width) : width;
   const numericHeight = typeof height === 'string' ? parseInt(height) : height;
@@ -34,13 +33,13 @@ export const PortableChart: React.FC<PortableChartProps> = ({
 
   // Following ChartHolder's pattern
   return (
-    <ChartWrapper width={numericWidth} height={numericHeight}>
+    <ChartWrapper >
       <Chart
         componentId={`CHART-${sliceId}`} // Following dashboard naming convention
         id={sliceId}
         dashboardId={39} // Not in a dashboard context
-        width={numericWidth}
-        height={numericHeight}
+        width={width}
+        height={height}
         sliceName={
           sliceEntityData?.slice_name || ''
         }

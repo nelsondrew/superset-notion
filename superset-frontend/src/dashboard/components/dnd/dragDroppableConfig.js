@@ -62,12 +62,17 @@ export const dropConfig = [
     hover(props, monitor, component) {
       if (component && component.mounted) {
         handleHover(props, monitor, component);
+        if (props.onHover) {
+          props.onHover(props, monitor);
+        }
       }
     },
-    // note:
-    //  the react-dnd api requires that the drop() method return a result or undefined
-    //  monitor.didDrop() cannot be used because it returns true only for the most-nested target
     drop(props, monitor, component) {
+      // Clean up any remaining drag-over classes
+      document.querySelectorAll('.drag-over').forEach(element => {
+        element.classList.remove('drag-over');
+      });
+
       const dropResult = monitor.getDropResult();
       if ((!dropResult || !dropResult.destination) && component.mounted) {
         return handleDrop(props, monitor, component);
