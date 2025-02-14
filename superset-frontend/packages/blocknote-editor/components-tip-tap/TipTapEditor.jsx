@@ -303,7 +303,7 @@ const HiddenInput = styled.input`
   display: none;
 `
 
-const TipTapEditor = ({ editMode }) => {
+export const TipTapEditor = ({ editMode }) => {
   const [isMounted, setIsMounted] = useState(false)
   const [isEmojiModalOpen, setIsEmojiModalOpen] = useState(false)
 
@@ -373,6 +373,20 @@ const TipTapEditor = ({ editMode }) => {
     onCreate() {
       setIsMounted(true)
     },
+    onFocus: () => {
+      // When editor is focused, set data attribute on parent
+      const editorContainer = document.querySelector('.blocknote-editor');
+      if (editorContainer) {
+        editorContainer.setAttribute('data-editor-focused', 'true');
+      }
+    },
+    onBlur: () => {
+      // When editor loses focus, remove data attribute from parent
+      const editorContainer = document.querySelector('.blocknote-editor');
+      if (editorContainer) {
+        editorContainer.setAttribute('data-editor-focused', 'false');
+      }
+    },
   })
 
   // Add this useEffect to update editable state when editMode changes
@@ -411,7 +425,10 @@ const TipTapEditor = ({ editMode }) => {
   }
 
   return (
-    <EditorContainer>
+    <EditorContainer 
+      className="editor-container" 
+      data-editor-focused={editor.isFocused}
+    >
       <MenuBar style={{ display: editMode ? 'flex' : 'none' }}>
         <Button
           onClick={() => editor.chain().focus().toggleBold().run()}

@@ -155,13 +155,12 @@ const EditorContainer = styled.div`
   }
 `;
 
-
-export default function TiptapEditor2() {
-  
+export default function BlockNoteEditor() {
   const editMode = useSelector(state => state?.dashboardState?.editMode);
+  
   return (
-    <EditorContainer>
-            <TipTapEditor editMode={editMode} />
+    <EditorContainer className="blocknote-editor">
+      <TipTapEditor editMode={editMode} />
     </EditorContainer>
   );
 }
