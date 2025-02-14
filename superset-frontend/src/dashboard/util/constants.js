@@ -1,0 +1,1 @@
+export const NEW_HELLO_ID = 'NEW_HELLO'; 

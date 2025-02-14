@@ -29,6 +29,7 @@ import {
   TABS_TYPE,
   TAB_TYPE,
   DYNAMIC_TYPE,
+  HELLO_TYPE,
 } from './componentTypes';
 
 import {
@@ -52,6 +53,7 @@ const typeToDefaultMetaData = {
   },
   [MARKDOWN_TYPE]: { width: GRID_DEFAULT_CHART_WIDTH, height: 50 },
   [ROW_TYPE]: { background: BACKGROUND_TRANSPARENT },
+  [HELLO_TYPE]: {background : BACKGROUND_TRANSPARENT},
   [TABS_TYPE]: null,
   [TAB_TYPE]: {
     text: '',
