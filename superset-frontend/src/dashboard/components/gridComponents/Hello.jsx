@@ -45,15 +45,7 @@ const propTypes = {
 export default function Hello(props) {
   const handleDrop = dropResult => {
     const { component } = props;
-    
-    console.log('Chart Drop Event:', {
-      dropResult,
-      componentId: component.id,
-      componentType: component.type,
-      draggedItem: dropResult.dragging,
-      destination: dropResult.destination,
-    });
-    
+  
     if (!component.children) {
       component.children = [];
     }
@@ -81,13 +73,6 @@ export default function Hello(props) {
 
   const childrenArray = component.children || [];
   
-  if (childrenArray.length > 0) {
-    console.log('Hello Component Children:', {
-      componentId: component.id,
-      children: childrenArray,
-      childrenCount: childrenArray.length,
-    });
-  }
 
   const handleDelete = () => {
     deleteComponent(id, parentComponent.id);

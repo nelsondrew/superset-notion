@@ -140,6 +140,7 @@ const EditButton = styled.button`
   display: flex;
   align-items: center;
   justify-content: center;
+  margin-right: 2rem;
 
   &:hover {
     background: #f8fafc;
@@ -368,9 +369,6 @@ export const ResizableChart = ({ node, selected, updateAttributes, deleteNode })
     })
   }
 
-  useEffect(() => {
-    console.log("Dimensions updated:", dimensions)
-  }, [dimensions])
 
   const handleConfirmDelete = () => {
     deleteNode()
@@ -430,16 +428,7 @@ export const ResizableChart = ({ node, selected, updateAttributes, deleteNode })
             height: Math.round(boundingRect.height)
           });
 
-          console.log('Dimensions:', {
-            chartContent: {
-              width: Math.round(width),
-              height: Math.round(height)
-            },
-            wrapper: {
-              width: Math.round(boundingRect.width),
-              height: Math.round(boundingRect.height)
-            }
-          });
+       
         }
       });
 
@@ -451,13 +440,7 @@ export const ResizableChart = ({ node, selected, updateAttributes, deleteNode })
     }
   }, [chartContentRef.current]);
 
-  // Debug log for both dimension states
-  useEffect(() => {
-    console.log("All dimensions:", {
-      resizable: dimensions,
-      wrapper: wrapperDimensions
-    });
-  }, [dimensions, wrapperDimensions]);
+
 
   return (
     <NodeViewWrapper>
