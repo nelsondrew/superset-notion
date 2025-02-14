@@ -1,8 +1,8 @@
-import React from 'react';
+import React, {  useState } from 'react';
 import styled from "styled-components";
 import 'tippy.js/dist/tippy.css';
 import TipTapEditor from "./components-tip-tap/TipTapEditor"
-import { useSelector } from 'react-redux';
+import { useSelector} from 'react-redux';
 
 const EditorContainer = styled.div`
   margin-top: 16px;
@@ -155,12 +155,20 @@ const EditorContainer = styled.div`
   }
 `;
 
-export default function BlockNoteEditor() {
+export default function BlockNoteEditor({ component }) {
   const editMode = useSelector(state => state?.dashboardState?.editMode);
+  const [editorContent, setEditorContent] = useState(null);
   
+  
+
+
   return (
     <EditorContainer className="blocknote-editor">
-      <TipTapEditor editMode={editMode} />
+      <TipTapEditor 
+        editMode={editMode} 
+        initialContent={editorContent}
+        component={component}
+      />
     </EditorContainer>
   );
 }

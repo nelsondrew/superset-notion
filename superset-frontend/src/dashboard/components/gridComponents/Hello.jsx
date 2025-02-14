@@ -189,7 +189,7 @@ export default function Hello(props) {
     >
       {({ dragSourceRef }) => (
         <HelloDiv ref={dragSourceRef}>
-          <BlockNoteEditor/>
+          <BlockNoteEditor component={component} />
           {editMode && (
             <DeleteButtonContainer editMode={editMode}>
               <DeleteComponentButton

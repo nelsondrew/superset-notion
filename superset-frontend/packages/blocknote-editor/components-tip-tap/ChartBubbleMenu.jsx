@@ -113,15 +113,6 @@ export const ChartBubbleMenu = ({ editor }) => {
 
   return (
     <>
-      {editMode && (
-        <Global
-          css={css`
-          .tippy-box {
-            display: none;
-          }
-        `}
-        />
-      )}
 
       <BubbleMenu
         editor={editor}

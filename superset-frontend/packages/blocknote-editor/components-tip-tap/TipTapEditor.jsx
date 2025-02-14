@@ -31,6 +31,9 @@ import { CustomEmojiUploader } from './CustomEmojiUploader'
 import { CustomEmoji } from './extensions/CustomEmojiExtension'
 import { AddEmojiModal } from './AddEmojiModal'
 import { customEmojiStorage } from '../utils/customEmojiStorage'
+import { useDispatch } from 'react-redux'
+import { updateComponents } from 'src/dashboard/actions/dashboardLayout'
+import { debounce } from 'lodash'
 
 const EditorContainer = styled.div`
   background: #fff;
@@ -302,9 +305,32 @@ const HiddenInput = styled.input`
   display: none;
 `
 
-export const TipTapEditor = ({ editMode }) => {
+export const TipTapEditor = ({ editMode, initialContent , component }) => {
+ 
   const [isMounted, setIsMounted] = useState(false)
   const [isEmojiModalOpen, setIsEmojiModalOpen] = useState(false)
+
+  
+  const dispatch = useDispatch();
+
+  const updateEditorComponentMeta = (editorJsonContent) => {
+    if(component) {
+      dispatch(
+        updateComponents({
+          [component?.id]: {
+            ...component,
+            meta: {
+              ...component.meta,
+              editorJson: editorJsonContent
+            },
+          },
+        }),
+      );
+    }
+   
+  }
+
+  const debounceUpdateEditorComponent = debounce(updateEditorComponentMeta, 300);
 
   const editor = useEditor({
     extensions: [
@@ -368,9 +394,14 @@ export const TipTapEditor = ({ editMode }) => {
     ],
     editable: editMode,
     injectCSS: false,
-    content: '<p></p>',
+    content: component?.meta?.editorJson || initialContent, 
     onCreate() {
       setIsMounted(true)
+      console.log('Editor created with content:', editor?.getJSON())
+    },
+    onUpdate: ({ editor }) => {
+      debounceUpdateEditorComponent(editor.getJSON())
+      console.log('Editor updated:', editor.getJSON())
     },
     onFocus: () => {
       // When editor is focused, set data attribute on parent

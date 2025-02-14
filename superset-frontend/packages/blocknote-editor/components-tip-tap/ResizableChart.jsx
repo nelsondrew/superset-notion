@@ -326,23 +326,20 @@ const Input = styled.input`
   }
 `
 
-export const ResizableChart = ({ node, selected, updateAttributes, deleteNode }) => {
+export const ResizableChart = (nodeProps) => {
+  const { node, selected, updateAttributes, deleteNode } = nodeProps
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
-  const [sliceId, setSliceId] = useState(node.attrs.chartId || '');
+  const [sliceId, setSliceId] = useState(parseInt(node.attrs.chartId) || '');
   const dispatch = useDispatch();
 
-  const [realSliceId, setRealSliceId] = useState('');
+  const [realSliceId, setRealSliceId] = useState(node.attrs.chartData?.chartId ||'');
   const [dimensions, setDimensions] = useState(() => {
     // Try to load saved dimensions from localStorage first
-    const savedDimensions = localStorage.getItem(`chart-${node.attrs.chartId}-dimensions`);
-    if (savedDimensions) {
-      const parsed = JSON.parse(savedDimensions);
-      return {
-        width: parsed.width || parseInt(node.attrs.width) || 600,
-        height: parsed.height || parseInt(node.attrs.height) || 200
-      };
-    }
+    console.log("initial height and width", {
+      width: parseInt(node.attrs.width) || 600,
+      height: parseInt(node.attrs.height) || 200
+    })
     return {
       width: parseInt(node.attrs.width) || 600,
       height: parseInt(node.attrs.height) || 200
@@ -350,8 +347,8 @@ export const ResizableChart = ({ node, selected, updateAttributes, deleteNode })
   });
   
   const [wrapperDimensions, setWrapperDimensions] = useState({
-    width: 0,
-    height: 0
+    width:  parseInt(node.attrs.width) || 0,
+    height:  parseInt(node.attrs.height) || 0
   });
 
   const chartWrapperRef = useRef(null);
@@ -516,6 +513,9 @@ export const ResizableChart = ({ node, selected, updateAttributes, deleteNode })
       // Handle the drop in the chart
       if (dropResult.dragging?.meta?.chartId) {
         const newSliceId = dropResult.dragging.meta.chartId;
+        updateAttributes({
+          chartData: dropResult.dragging.meta
+        })
         setRealSliceId(newSliceId);
         updateAttributes({
           chartId: newSliceId,
