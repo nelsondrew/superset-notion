@@ -23,26 +23,31 @@ import handleScroll from './handleScroll';
 
 const HOVER_THROTTLE_MS = 100;
 
-function handleHover(props, monitor, Component) {
+function handleHover(props, monitor, component) {
   // this may happen due to throttling
-  if (!Component.mounted) return;
+  if (!component.mounted) return;
 
-  const dropPosition = getDropPosition(monitor, Component);
+  const dropPosition = getDropPosition(monitor, component);
 
   const isDashboardRoot =
-    Component?.props?.component?.type === DASHBOARD_ROOT_TYPE;
+    component?.props?.component?.type === DASHBOARD_ROOT_TYPE;
   const scroll = isDashboardRoot ? 'SCROLL_TOP' : null;
 
   handleScroll(scroll);
 
   if (!dropPosition) {
-    Component.setState(() => ({ dropIndicator: null }));
+    component.setState(() => ({ dropIndicator: null }));
     return;
   }
 
-  Component?.props?.onHover();
+  // Call the onHover prop if provided
+  component?.props?.onHover();
+  if (props.onHover) {
+    props.onHover(props, monitor);
+  }
 
-  Component.setState(() => ({
+  // Set drop indicator state
+  component.setState(() => ({
     dropIndicator: dropPosition,
   }));
 }

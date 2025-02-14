@@ -21,12 +21,12 @@ import getDropPosition, {
   DROP_FORBIDDEN,
 } from '../../util/getDropPosition';
 
-export default function handleDrop(props, monitor, Component) {
+export default function handleDrop(props, monitor, component) {
   // this may happen due to throttling
-  if (!Component.mounted) return undefined;
+  if (!component.mounted) return undefined;
 
-  Component.setState(() => ({ dropIndicator: null }));
-  const dropPosition = getDropPosition(monitor, Component);
+  component.setState(() => ({ dropIndicator: null }));
+  const dropPosition = getDropPosition(monitor, component);
 
   if (!dropPosition || dropPosition === DROP_FORBIDDEN) {
     return undefined;
@@ -34,11 +34,11 @@ export default function handleDrop(props, monitor, Component) {
 
   const {
     parentComponent,
-    component,
+    component: componentProps,
     index: componentIndex,
     onDrop,
     dropToChild,
-  } = Component.props;
+  } = props;
 
   const draggingItem = monitor.getItem();
 
@@ -62,14 +62,14 @@ export default function handleDrop(props, monitor, Component) {
   // simplest case, append as child
   if (shouldAppendToChildren) {
     dropResult.destination = {
-      id: component.id,
-      type: component.type,
-      index: component.children.length,
+      id: componentProps.id,
+      type: componentProps.type,
+      index: componentProps.children.length,
     };
   } else if (!parentComponent) {
     dropResult.destination = {
-      id: component.id,
-      type: component.type,
+      id: componentProps.id,
+      type: componentProps.type,
       index: componentIndex,
     };
   } else {
@@ -80,7 +80,7 @@ export default function handleDrop(props, monitor, Component) {
     const sameParentLowerIndex =
       sameParent &&
       draggingItem.index < componentIndex &&
-      draggingItem.type !== component.type;
+      draggingItem.type !== componentProps.type;
 
     const nextIndex = sameParentLowerIndex
       ? componentIndex - 1
@@ -93,7 +93,11 @@ export default function handleDrop(props, monitor, Component) {
     };
   }
 
-  onDrop(dropResult);
+  // call handler if provided
+  if (onDrop) {
+    onDrop(dropResult, monitor);  // Pass monitor as second argument
+  }
+
   clearDropCache();
 
   return dropResult;

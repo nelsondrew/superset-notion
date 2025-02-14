@@ -24,6 +24,24 @@ const ChartWrapper = styled.div`
   }};
   flex: 1;
   min-width: 0;
+
+  &.drag-over {
+    position: relative;
+    transition: all 0.2s ease;
+
+    &::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #3b82f6;
+      opacity: 0.3;
+      pointer-events: none;
+      z-index: 100;
+    }
+  }
 `
 
 const Chart = styled.div`
@@ -421,7 +439,6 @@ export const ResizableChart = ({ node, selected, updateAttributes, deleteNode })
         if (entry) {
           const { width, height } = entry.contentRect;
           const boundingRect = entry.target.getBoundingClientRect();
-          
           // Update wrapper dimensions
           setWrapperDimensions({
             width: Math.round(boundingRect.width),
@@ -440,12 +457,45 @@ export const ResizableChart = ({ node, selected, updateAttributes, deleteNode })
     }
   }, [chartContentRef.current]);
 
+  // Update the chart drop event listener
+  useEffect(() => {
+    const handleChartDrop = (event) => {
+      const { dropResult } = event.detail;
+      
+      // Handle the drop in the chart
+      if (dropResult.dragging?.meta?.chartId) {
+        const newSliceId = dropResult.dragging.meta.chartId;
+        setRealSliceId(newSliceId);
+        updateAttributes({
+          chartId: newSliceId,
+          selected: true
+        });
+        setShowEditModal(false);
+      }
+    };
 
+    const wrapperElement = chartWrapperRef.current;
+    console.log('Wrapper element:', wrapperElement);
+    
+    if (wrapperElement) {
+      console.log('Adding chart-drop listener');
+      wrapperElement.addEventListener('chart-drop', handleChartDrop);
+      return () => {
+        wrapperElement.removeEventListener('chart-drop', handleChartDrop);
+      };
+    }
+  }, [chartWrapperRef.current]); // Re-run when ref is available
 
   return (
     <NodeViewWrapper>
       <ChartContainer captionAlignment={node.attrs.captionAlignment || 'bottom'}>
-        <ChartWrapper className='chart-wrapper' alignment={node.attrs.alignment || 'center'}>
+        <ChartWrapper 
+          ref={chartWrapperRef}
+          className='portable-chart-component'
+          alignment={node.attrs.alignment || 'center'} 
+          width={dimensions.width} 
+          height={dimensions.height}
+        >
           <Resizable
             ref={resizableRef}
             defaultSize={{
