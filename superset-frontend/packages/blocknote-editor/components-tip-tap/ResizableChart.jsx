@@ -4,6 +4,8 @@ import styled from 'styled-components'
 import { useState, useEffect, useRef } from 'react'
 import { DeleteConfirmationModal } from './DeleteConfirmationModal'
 import { PortableChart } from '../components/PortableChart'
+import { useDispatch, useSelector } from 'react-redux'
+import { setUnsavedChanges } from 'src/dashboard/actions/dashboardState'
 
 const ChartContainer = styled.div`
   margin: 1rem 0;
@@ -59,28 +61,28 @@ const Chart = styled.div`
   transition: all 0.2s ease;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   padding: 1rem;
-  cursor: pointer;
+  cursor: ${props => props.editMode ? 'pointer' : 'default'};
   position: relative;
   z-index: 1;
 
   &:hover {
-    border-color: #cbd5e1;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    border-color: ${props => props.editMode ? '#cbd5e1' : '#e2e8f0'};
+    box-shadow: ${props => props.editMode ? '0 2px 4px rgba(0, 0, 0, 0.1)' : '0 1px 3px rgba(0, 0, 0, 0.1)'};
 
     & ~ .resize-handle {
-      opacity: 0.5;
+      opacity: ${props => props.editMode ? '0.5' : '0'};
     }
   }
 
   &.ProseMirror-selectednode {
-    border-color: #3b82f6;
-    outline: 2px solid rgba(59, 130, 246, 0.2);
-    box-shadow: 0 2px 4px rgba(59, 130, 246, 0.1);
+    border-color: ${props => props.editMode ? '#3b82f6' : '#e2e8f0'};
+    outline: ${props => props.editMode ? '2px solid rgba(59, 130, 246, 0.2)' : 'none'};
+    box-shadow: ${props => props.editMode ? '0 2px 4px rgba(59, 130, 246, 0.1)' : '0 1px 3px rgba(0, 0, 0, 0.1)'};
     position: relative;
     z-index: 50;
 
     & ~ .resize-handle {
-      opacity: 1;
+      opacity: ${props => props.editMode ? '1' : '0'};
     }
   }
 `
@@ -324,31 +326,49 @@ const Input = styled.input`
   }
 `
 
-export const ResizableChart = ({ node, selected, updateAttributes, deleteNode }) => {
+export const ResizableChart = (nodeProps) => {
+  const { node, selected, updateAttributes, deleteNode } = nodeProps
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
-  const [sliceId, setSliceId] = useState(node.attrs.chartId || '')
-  const [realSliceId, setRealSliceId] = useState('');
-  const [dimensions, setDimensions] = useState({
-    width: parseInt(node.attrs.width) || 600,
-    height: parseInt(node.attrs.height) || 200
+  const [sliceId, setSliceId] = useState(parseInt(node.attrs.chartId) || '');
+  const dispatch = useDispatch();
+
+  const [realSliceId, setRealSliceId] = useState(node.attrs.chartData?.chartId ||'');
+  const [dimensions, setDimensions] = useState(() => {
+    // Try to load saved dimensions from localStorage first
+    console.log("initial height and width", {
+      width: parseInt(node.attrs.width) || 600,
+      height: parseInt(node.attrs.height) || 200
+    })
+    return {
+      width: parseInt(node.attrs.width) || 600,
+      height: parseInt(node.attrs.height) || 200
+    };
   });
   
-  // Add new state for ChartWrapper dimensions
   const [wrapperDimensions, setWrapperDimensions] = useState({
-    width: 0,
-    height: 0
+    width:  parseInt(node.attrs.width) || 0,
+    height:  parseInt(node.attrs.height) || 0
   });
 
   const chartWrapperRef = useRef(null);
   const resizableRef = useRef(null);
   const chartContentRef = useRef(null);
+  const editMode = useSelector(state => state?.dashboardState?.editMode);
+
+  useEffect(() => {
+    console.log(editMode, "edit mode from resizable")
+  },[editMode])
 
   useEffect(() => {
     if (node.attrs.chartId) {
       setSliceId(node.attrs.chartId)
     }
   }, [node.attrs.chartId])
+
+  useEffect(() => {
+      dispatch(setUnsavedChanges(true));
+  },[wrapperDimensions.width , wrapperDimensions.height])
 
   useEffect(() => {
     const handleDeleteRequest = (event) => {
@@ -361,6 +381,28 @@ export const ResizableChart = ({ node, selected, updateAttributes, deleteNode })
     return () => window.removeEventListener('chart-delete-request', handleDeleteRequest)
   }, [selected])
 
+  // Save dimensions to localStorage when they change
+  useEffect(() => {
+    if (node.attrs.chartId && dimensions.width && dimensions.height) {
+      localStorage.setItem(`chart-${node.attrs.chartId}-dimensions`, JSON.stringify(dimensions));
+    }
+  }, [dimensions, node.attrs.chartId]);
+
+  // Update wrapper dimensions when editMode changes
+  useEffect(() => {
+    if (!editMode) {
+      // In view mode, set wrapper dimensions to match saved dimensions
+      const savedDimensions = localStorage.getItem(`chart-${node.attrs.chartId}-dimensions`);
+      if (savedDimensions) {
+        const parsed = JSON.parse(savedDimensions);
+        setWrapperDimensions({
+          width: parsed.width,
+          height: parsed.height
+        });
+      }
+    }
+  }, [editMode, node.attrs.chartId]);
+
   const handleResize = (e, direction, ref) => {
     if (selected) {
       const width = parseInt(ref.style.width.replace('px', ''));
@@ -371,7 +413,7 @@ export const ResizableChart = ({ node, selected, updateAttributes, deleteNode })
         width: ref.style.width,
         height: ref.style.height,
         selected: true
-      })
+      });
     }
   }
 
@@ -380,11 +422,16 @@ export const ResizableChart = ({ node, selected, updateAttributes, deleteNode })
     const height = parseInt(ref.style.height.replace('px', ''));
     
     setDimensions({ width, height });
+    // Save to localStorage on resize stop
+    if (node.attrs.chartId) {
+      localStorage.setItem(`chart-${node.attrs.chartId}-dimensions`, JSON.stringify({ width, height }));
+    }
+    
     updateAttributes({
       width: ref.style.width,
       height: ref.style.height,
       selected: true
-    })
+    });
   }
 
 
@@ -461,10 +508,14 @@ export const ResizableChart = ({ node, selected, updateAttributes, deleteNode })
   useEffect(() => {
     const handleChartDrop = (event) => {
       const { dropResult } = event.detail;
+      console.log(dropResult)
       
       // Handle the drop in the chart
       if (dropResult.dragging?.meta?.chartId) {
         const newSliceId = dropResult.dragging.meta.chartId;
+        updateAttributes({
+          chartData: dropResult.dragging.meta
+        })
         setRealSliceId(newSliceId);
         updateAttributes({
           chartId: newSliceId,
@@ -493,31 +544,42 @@ export const ResizableChart = ({ node, selected, updateAttributes, deleteNode })
           ref={chartWrapperRef}
           className='portable-chart-component'
           alignment={node.attrs.alignment || 'center'} 
-          width={dimensions.width} 
-          height={dimensions.height}
+          width={editMode ? dimensions.width : wrapperDimensions.width} 
+          height={editMode ? dimensions.height : wrapperDimensions.height}
         >
           <Resizable
             ref={resizableRef}
             defaultSize={{
-              width: node.attrs.width || '600px',
-              height: node.attrs.height || '200px',
+              width: dimensions.width + 'px',
+              height: dimensions.height + 'px',
             }}
             size={{
-              width: node.attrs.width || '600px',
-              height: node.attrs.height || '200px',
+              width: dimensions.width + 'px',
+              height: dimensions.height + 'px',
             }}
             minHeight={100}
             minWidth={200}
             maxWidth="100%"
             enable={{
-              top: false,
-              right: true,
-              bottom: true,
-              left: false,
-              topRight: false,
-              bottomRight: true,
-              bottomLeft: false,
-              topLeft: false,
+              ...(!editMode ? {
+                top: false,
+                right: false,
+                bottom: false,
+                left: false,
+                topRight: false,
+                bottomRight: false,
+                bottomLeft: false,
+                topLeft: false,
+              } : {
+                top: false,
+                right: true,
+                bottom: true,
+                left: false,
+                topRight: false,
+                bottomRight: true,
+                bottomLeft: false,
+                topLeft: false,
+              })
             }}
             handleStyles={{
               right: {
@@ -567,17 +629,20 @@ export const ResizableChart = ({ node, selected, updateAttributes, deleteNode })
               ref={chartContentRef}
               className={selected ? 'ProseMirror-selectednode' : ''}
               data-type="chart"
-              onClick={() => updateAttributes({ selected: true })}
+              onClick={() => editMode && updateAttributes({ selected: true })}
+              editMode={editMode}
             >
-              <EditButton
-                onClick={(e) => {
-                  e.stopPropagation()
-                  setShowEditModal(true)
-                }}
-                title="Edit Chart ID"
-              >
-                <EditIcon />
-              </EditButton>
+              {editMode && (
+                <EditButton
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setShowEditModal(true)
+                  }}
+                  title="Edit Chart ID"
+                >
+                  <EditIcon />
+                </EditButton>
+              )}
 
               {(realSliceId) ? (
                 <PortableChart

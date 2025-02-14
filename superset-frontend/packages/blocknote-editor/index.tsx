@@ -1,8 +1,8 @@
-import React from 'react';
+import React, {  useState } from 'react';
 import styled from "styled-components";
 import 'tippy.js/dist/tippy.css';
 import TipTapEditor from "./components-tip-tap/TipTapEditor"
-import { useSelector } from 'react-redux';
+import { useSelector} from 'react-redux';
 
 const EditorContainer = styled.div`
   margin-top: 16px;
@@ -13,7 +13,7 @@ const EditorContainer = styled.div`
 
   .ProseMirror {
     padding: 16px;
-    min-height: 200px;
+    min-height: 100vh;
     position: relative;
     
     &:focus {
@@ -155,13 +155,20 @@ const EditorContainer = styled.div`
   }
 `;
 
-
-export default function TiptapEditor2() {
-  
+export default function BlockNoteEditor({ component }) {
   const editMode = useSelector(state => state?.dashboardState?.editMode);
+  const [editorContent, setEditorContent] = useState(null);
+  
+  
+
+
   return (
-    <EditorContainer>
-            <TipTapEditor editMode={editMode} />
+    <EditorContainer className="blocknote-editor">
+      <TipTapEditor 
+        editMode={editMode} 
+        initialContent={editorContent}
+        component={component}
+      />
     </EditorContainer>
   );
 }

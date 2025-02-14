@@ -1,9 +1,9 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { styled, t } from '@superset-ui/core';
 import { DragDroppable } from '../dnd/DragDroppable';
 import { CHART_TYPE, PORTABLE_CHART_TYPE } from '../../util/componentTypes';
-import BlockNoteEdtitor from "../../../../packages/blocknote-editor/index"
+import BlockNoteEditor from "../../../../packages/blocknote-editor/index"
 import DeleteComponentButton from '../DeleteComponentButton';
 
 const HelloDiv = styled.div`
@@ -43,6 +43,29 @@ const propTypes = {
 };
 
 export default function Hello(props) {
+  const { editMode } = props;
+  const [isEditorFocused, setIsEditorFocused] = useState(false);
+
+  useEffect(() => {
+    const editorElement = document.querySelector('.blocknote-editor');
+    if (editorElement) {
+      const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+          if (mutation.type === 'attributes' && mutation.attributeName === 'data-editor-focused') {
+            setIsEditorFocused(editorElement.getAttribute('data-editor-focused') === 'true');
+          }
+        });
+      });
+
+      observer.observe(editorElement, {
+        attributes: true,
+        attributeFilter: ['data-editor-focused']
+      });
+
+      return () => observer.disconnect();
+    }
+  }, []);
+
   const handleHover = (hoverProps, monitor) => {
     // Make sure we have a monitor
     if (!monitor) return;
@@ -143,7 +166,6 @@ export default function Hello(props) {
     parentComponent,
     index,
     depth,
-    editMode,
     deleteComponent,
   } = props;
 
@@ -162,12 +184,12 @@ export default function Hello(props) {
       onHover={handleHover}
       editMode={editMode}
       droppable
+      disableDragDrop={isEditorFocused}
       acceptedChildren={[CHART_TYPE]}
     >
       {({ dragSourceRef }) => (
         <HelloDiv ref={dragSourceRef}>
-          {/* <div>HELLO WORLD (Charts absorbed: {childrenArray.length})</div> */}
-          <BlockNoteEdtitor/>
+          <BlockNoteEditor component={component} />
           {editMode && (
             <DeleteButtonContainer editMode={editMode}>
               <DeleteComponentButton

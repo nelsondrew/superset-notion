@@ -4,6 +4,8 @@ import { BubbleMenu } from '@tiptap/react'
 import styled from 'styled-components'
 import { useState } from 'react'
 import { CaptionModal } from './CaptionModal'
+import { useSelector } from 'react-redux'
+import { css, Global } from '@emotion/react'
 
 const MenuContainer = styled.div`
   display: flex;
@@ -65,6 +67,8 @@ const CaptionInput = styled.input`
 export const ChartBubbleMenu = ({ editor }) => {
   const [showCaptionModal, setShowCaptionModal] = useState(false)
   const currentAlignment = editor.getAttributes('chart').alignment || 'center'
+  const editMode = useSelector(state => state?.dashboardState?.editMode);
+
 
   const handleSaveCaption = ({ caption, width }) => {
     const captionAlignment = (() => {
@@ -78,7 +82,7 @@ export const ChartBubbleMenu = ({ editor }) => {
     editor
       .chain()
       .focus()
-      .updateAttributes('chart', { 
+      .updateAttributes('chart', {
         caption,
         captionAlignment,
         captionWidth: width
@@ -99,7 +103,7 @@ export const ChartBubbleMenu = ({ editor }) => {
     editor
       .chain()
       .focus()
-      .updateAttributes('chart', { 
+      .updateAttributes('chart', {
         alignment,
         // Update captionAlignment only if there's a caption
         ...(editor.getAttributes('chart').caption && { captionAlignment })
@@ -109,12 +113,14 @@ export const ChartBubbleMenu = ({ editor }) => {
 
   return (
     <>
+
       <BubbleMenu
         editor={editor}
-        shouldShow={({ editor }) => editor.isActive('chart') && !showCaptionModal}
-        tippyOptions={{ 
+        shouldShow={({ editor }) => editMode && editor.isActive('chart') && !showCaptionModal}
+        tippyOptions={{
           duration: 100,
           placement: 'top',
+          zIndex: 999,
           getReferenceClientRect: () => {
             const chartElement = document.querySelector('.ProseMirror-selectednode[data-type="chart"]')
             if (chartElement) {

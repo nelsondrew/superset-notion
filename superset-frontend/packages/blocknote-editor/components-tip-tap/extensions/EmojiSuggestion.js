@@ -34,6 +34,9 @@ const baseEmojiList = [
   { name: 'rainbow', emoji: '🌈' },
   { name: 'moon', emoji: '🌙' },
   { name: 'sun', emoji: '☀️' },
+  { name: 'sun', emoji: '☀️' },
+  { name : 'messages' , emoji : '💬' },
+  { name: 'clock' , emoji : '🕒' }  ,
   // Add more emojis as needed
 ]
 
