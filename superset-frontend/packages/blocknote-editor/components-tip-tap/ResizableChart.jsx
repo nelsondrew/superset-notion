@@ -1,8 +1,9 @@
 import { Resizable } from 're-resizable'
 import { NodeViewWrapper } from '@tiptap/react'
 import styled from 'styled-components'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { DeleteConfirmationModal } from './DeleteConfirmationModal'
+import { PortableChart } from '../components/PortableChart'
 
 const ChartContainer = styled.div`
   margin: 1rem 0;
@@ -74,7 +75,7 @@ const Caption = styled.div`
   width: ${props => {
     if (props.captionAlignment === 'bottom') return '100%';
     if (props.captionAlignment === 'left' || props.captionAlignment === 'right') {
-      if(props.width !== '100%') {
+      if (props.width !== '100%') {
         return props.width;
       }
       return '200px';
@@ -124,9 +125,211 @@ const CaptionWrapper = styled.div`
   position: relative;
 `
 
+const EditButton = styled.button`
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  padding: 4px;
+  cursor: pointer;
+  opacity: 0;
+  transition: all 0.2s;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+  }
+
+  ${Chart}:hover & {
+    opacity: 1;
+  }
+
+  ${Chart}.ProseMirror-selectednode & {
+    opacity: 1;
+  }
+`
+
+const EditIcon = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    width="16"
+    height="16"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"
+    />
+  </svg>
+)
+
+const ModalOverlay = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease-out;
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+`
+
+const ModalContent = styled.div`
+  background: white;
+  padding: 28px;
+  border-radius: 12px;
+  box-shadow: 
+    0 0 0 1px rgba(0, 0, 0, 0.05),
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  max-width: 400px;
+  width: 90%;
+  animation: slideUp 0.3s ease-out;
+
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: scale(0.95) translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+  }
+`
+
+const ModalTitle = styled.h3`
+  margin: 0 0 24px 0;
+  color: #1f2937;
+  font-size: 1.25rem;
+  font-weight: 600;
+`
+
+const InputLabel = styled.label`
+  display: block;
+  margin-bottom: 8px;
+  color: #4b5563;
+  font-size: 0.9375rem;
+  font-weight: 500;
+`
+
+const ButtonGroup = styled.div`
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 24px;
+`
+
+const Button = styled.button`
+  padding: 9px 16px;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &.cancel {
+    background: white;
+    border: 1px solid #e5e7eb;
+    color: #374151;
+
+    &:hover {
+      background: #f9fafb;
+      border-color: #d1d5db;
+    }
+  }
+
+  &.save {
+    background: #2563eb;
+    border: 1px solid #2563eb;
+    color: white;
+
+    &:hover {
+      background: #1d4ed8;
+      border-color: #1d4ed8;
+    }
+  }
+`
+
+const Input = styled.input`
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  color: #1f2937;
+  background: white;
+  transition: all 0.2s;
+
+  &:hover {
+    border-color: #cbd5e1;
+  }
+  
+  &:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+  }
+
+  &::placeholder {
+    color: #9ca3af;
+  }
+
+  &::-webkit-outer-spin-button,
+  &::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  &[type=number] {
+    -moz-appearance: textfield;
+  }
+`
+
 export const ResizableChart = ({ node, selected, updateAttributes, deleteNode }) => {
   const [showDeleteModal, setShowDeleteModal] = useState(false)
-  const alignment = node.attrs.alignment || 'center'
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [sliceId, setSliceId] = useState(node.attrs.chartId || '')
+  const [realSliceId, setRealSliceId] = useState('');
+  const [dimensions, setDimensions] = useState({
+    width: parseInt(node.attrs.width) || 600,
+    height: parseInt(node.attrs.height) || 200
+  });
+  
+  // Add new state for ChartWrapper dimensions
+  const [wrapperDimensions, setWrapperDimensions] = useState({
+    width: 0,
+    height: 0
+  });
+
+  const chartWrapperRef = useRef(null);
+  const resizableRef = useRef(null);
+  const chartContentRef = useRef(null);
+
+  useEffect(() => {
+    if (node.attrs.chartId) {
+      setSliceId(node.attrs.chartId)
+    }
+  }, [node.attrs.chartId])
 
   useEffect(() => {
     const handleDeleteRequest = (event) => {
@@ -139,27 +342,39 @@ export const ResizableChart = ({ node, selected, updateAttributes, deleteNode })
     return () => window.removeEventListener('chart-delete-request', handleDeleteRequest)
   }, [selected])
 
-  const handleConfirmDelete = () => {
-    deleteNode()
-    setShowDeleteModal(false)
-  }
-
   const handleResize = (e, direction, ref) => {
     if (selected) {
-      updateAttributes({ 
+      const width = parseInt(ref.style.width.replace('px', ''));
+      const height = parseInt(ref.style.height.replace('px', ''));
+      
+      setDimensions({ width, height });
+      updateAttributes({
         width: ref.style.width,
         height: ref.style.height,
-        selected: true 
+        selected: true
       })
     }
   }
 
   const handleResizeStop = (e, direction, ref) => {
+    const width = parseInt(ref.style.width.replace('px', ''));
+    const height = parseInt(ref.style.height.replace('px', ''));
+    
+    setDimensions({ width, height });
     updateAttributes({
       width: ref.style.width,
       height: ref.style.height,
       selected: true
     })
+  }
+
+  useEffect(() => {
+    console.log("Dimensions updated:", dimensions)
+  }, [dimensions])
+
+  const handleConfirmDelete = () => {
+    deleteNode()
+    setShowDeleteModal(false)
   }
 
   const setAlignment = (alignment) => {
@@ -184,15 +399,72 @@ export const ResizableChart = ({ node, selected, updateAttributes, deleteNode })
     })
   }
 
+  const handleEditSubmit = () => {
+    const numericSliceId = parseInt(sliceId, 10);
+    if (!isNaN(numericSliceId)) {
+      setRealSliceId(numericSliceId)
+      updateAttributes({
+        chartId: numericSliceId,
+        selected: true
+      });
+      setShowEditModal(false);
+    }
+  }
+
   const captionWidth = node.attrs.captionWidth || '200px'
   const captionAlignment = node.attrs.captionAlignment || 'bottom'
   const isSideCaption = captionAlignment === 'left' || captionAlignment === 'right'
 
+  // Update ResizeObserver effect to track both sets of dimensions
+  useEffect(() => {
+    if (chartContentRef.current) {
+      const observer = new ResizeObserver(entries => {
+        const entry = entries[0];
+        if (entry) {
+          const { width, height } = entry.contentRect;
+          const boundingRect = entry.target.getBoundingClientRect();
+          
+          // Update wrapper dimensions
+          setWrapperDimensions({
+            width: Math.round(boundingRect.width),
+            height: Math.round(boundingRect.height)
+          });
+
+          console.log('Dimensions:', {
+            chartContent: {
+              width: Math.round(width),
+              height: Math.round(height)
+            },
+            wrapper: {
+              width: Math.round(boundingRect.width),
+              height: Math.round(boundingRect.height)
+            }
+          });
+        }
+      });
+
+      observer.observe(chartContentRef.current);
+
+      return () => {
+        observer.disconnect();
+      };
+    }
+  }, [chartContentRef.current]);
+
+  // Debug log for both dimension states
+  useEffect(() => {
+    console.log("All dimensions:", {
+      resizable: dimensions,
+      wrapper: wrapperDimensions
+    });
+  }, [dimensions, wrapperDimensions]);
+
   return (
     <NodeViewWrapper>
       <ChartContainer captionAlignment={node.attrs.captionAlignment || 'bottom'}>
-        <ChartWrapper alignment={alignment}>
+        <ChartWrapper className='chart-wrapper' alignment={node.attrs.alignment || 'center'}>
           <Resizable
+            ref={resizableRef}
             defaultSize={{
               width: node.attrs.width || '600px',
               height: node.attrs.height || '200px',
@@ -215,7 +487,7 @@ export const ResizableChart = ({ node, selected, updateAttributes, deleteNode })
               topLeft: false,
             }}
             handleStyles={{
-              right: { 
+              right: {
                 width: '2px',
                 right: '-1px',
                 top: '0',
@@ -226,7 +498,7 @@ export const ResizableChart = ({ node, selected, updateAttributes, deleteNode })
                 transition: 'all 0.2s ease',
                 opacity: 0
               },
-              bottom: { 
+              bottom: {
                 height: '2px',
                 bottom: '-1px',
                 left: '0',
@@ -237,7 +509,7 @@ export const ResizableChart = ({ node, selected, updateAttributes, deleteNode })
                 transition: 'all 0.2s ease',
                 opacity: 0
               },
-              bottomRight: { 
+              bottomRight: {
                 width: '6px',
                 height: '6px',
                 bottom: '-2px',
@@ -258,17 +530,36 @@ export const ResizableChart = ({ node, selected, updateAttributes, deleteNode })
             onResize={handleResize}
             onResizeStop={handleResizeStop}
           >
-            <Chart 
+            <Chart
+              ref={chartContentRef}
               className={selected ? 'ProseMirror-selectednode' : ''}
               data-type="chart"
               onClick={() => updateAttributes({ selected: true })}
             >
-              Chart
+              <EditButton
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setShowEditModal(true)
+                }}
+                title="Edit Chart ID"
+              >
+                <EditIcon />
+              </EditButton>
+
+              {(realSliceId) ? (
+                <PortableChart
+                  sliceId={parseInt(realSliceId)}
+                  width={parseInt(wrapperDimensions.width)}
+                  height={parseInt(wrapperDimensions.height)}
+                />
+              ) : (
+                'Chart'
+              )}
             </Chart>
           </Resizable>
         </ChartWrapper>
         {node.attrs.caption && (
-          <Caption 
+          <Caption
             captionAlignment={node.attrs.captionAlignment || 'bottom'}
             width={node.attrs.captionWidth}
           >
@@ -276,6 +567,39 @@ export const ResizableChart = ({ node, selected, updateAttributes, deleteNode })
           </Caption>
         )}
       </ChartContainer>
+
+      {showEditModal && (
+        <ModalOverlay onClick={() => setShowEditModal(false)}>
+          <ModalContent onClick={e => e.stopPropagation()}>
+            <ModalTitle>Edit Chart</ModalTitle>
+            <div>
+              <InputLabel htmlFor="slice-id">Chart ID</InputLabel>
+              <Input
+                id="slice-id"
+                type="number"
+                value={sliceId}
+                onChange={(e) => setSliceId(e.target.value)}
+                placeholder="Enter chart ID"
+              />
+            </div>
+            <ButtonGroup>
+              <Button
+                className="cancel"
+                onClick={() => setShowEditModal(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                className="save"
+                onClick={handleEditSubmit}
+              >
+                Save
+              </Button>
+            </ButtonGroup>
+          </ModalContent>
+        </ModalOverlay>
+      )}
+
       {showDeleteModal && (
         <DeleteConfirmationModal
           onConfirm={handleConfirmDelete}

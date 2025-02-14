@@ -107,7 +107,7 @@ export default function Hello(props) {
     >
       {({ dropIndicatorProps, dragSourceRef }) => (
         <HelloDiv ref={dragSourceRef}>
-          <div>HELLO WORLD (Charts absorbed: {childrenArray.length})</div>
+          {/* <div>HELLO WORLD (Charts absorbed: {childrenArray.length})</div> */}
           <BlockNoteEdtitor/>
           {editMode && (
             <DeleteButtonContainer editMode={editMode}>
