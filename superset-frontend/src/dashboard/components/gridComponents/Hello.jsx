@@ -182,7 +182,7 @@ export default function Hello(props) {
     }
 
     // Store the current children IDs before the drop
-    const previousChildrenIds = component.children ? component.children.map(child => child.id) : [];
+    const previousChildrenIds = component.children ? component.children : [];
 
     // Save drop details in ref for later processing
     pendingChartDropRef.current = {
