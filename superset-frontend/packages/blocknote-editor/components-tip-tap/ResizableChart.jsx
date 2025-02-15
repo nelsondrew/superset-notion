@@ -359,9 +359,6 @@ export const ResizableChart = (nodeProps) => {
   const chartContentRef = useRef(null);
   const editMode = useSelector(state => state?.dashboardState?.editMode);
 
-  useEffect(() => {
-    console.log(editMode, "edit mode from resizable")
-  },[editMode])
 
   useEffect(() => {
     if (node.attrs.chartId) {
@@ -523,7 +520,6 @@ export const ResizableChart = (nodeProps) => {
   useEffect(() => {
     const handleChartDrop = (event) => {
       const { dropResult } = event.detail;
-      console.log(dropResult)
       
       // Handle the drop in the chart
       if (dropResult.dragging?.meta?.chartId) {
@@ -541,10 +537,8 @@ export const ResizableChart = (nodeProps) => {
     };
 
     const wrapperElement = chartWrapperRef.current;
-    console.log('Wrapper element:', wrapperElement);
     
     if (wrapperElement) {
-      console.log('Adding chart-drop listener');
       wrapperElement.addEventListener('chart-drop', handleChartDrop);
       return () => {
         wrapperElement.removeEventListener('chart-drop', handleChartDrop);
