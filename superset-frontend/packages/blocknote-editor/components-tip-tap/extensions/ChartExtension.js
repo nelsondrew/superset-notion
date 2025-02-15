@@ -89,6 +89,12 @@ export const ChartExtension = Node.create({
     return ['div', { 'data-type': 'chart', ...HTMLAttributes }]
   },
 
+  addOptions() {
+    return {
+      parentId: null,
+    }
+  },
+
   addNodeView() {
     return ReactNodeViewRenderer(ResizableChart)
   },

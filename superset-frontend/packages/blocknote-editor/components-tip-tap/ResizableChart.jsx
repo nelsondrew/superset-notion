@@ -7,6 +7,7 @@ import { PortableChart } from '../components/PortableChart'
 import { useDispatch, useSelector } from 'react-redux'
 import { setUnsavedChanges } from 'src/dashboard/actions/dashboardState'
 import { v4 as uuidv4 } from 'uuid'
+import { deleteComponent } from 'src/dashboard/actions/dashboardLayout'
 
 const ChartContainer = styled.div`
   margin: 1rem 0;
@@ -333,7 +334,7 @@ const generateShortId = () => {
 };
 
 export const ResizableChart = (nodeProps) => {
-  const { node, selected, updateAttributes, deleteNode } = nodeProps
+  const { node, selected, updateAttributes, deleteNode, extension } = nodeProps
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [sliceId, setSliceId] = useState(parseInt(node.attrs.chartId) || '');
@@ -359,6 +360,7 @@ export const ResizableChart = (nodeProps) => {
   const chartContentRef = useRef(null);
   const editMode = useSelector(state => state?.dashboardState?.editMode);
 
+  const parentComponentId = extension.options.parentId;  // Get parent ID from extension options
 
   useEffect(() => {
     if (node.attrs.chartId) {
@@ -380,8 +382,6 @@ export const ResizableChart = (nodeProps) => {
     window.addEventListener('chart-delete-request', handleDeleteRequest)
     return () => window.removeEventListener('chart-delete-request', handleDeleteRequest)
   }, [selected])
-
-
 
   // Update the useEffect that generates nodeId
   useEffect(() => {
@@ -414,7 +414,6 @@ export const ResizableChart = (nodeProps) => {
 
     setDimensions({ width, height });
 
-
     updateAttributes({
       width: ref.style.width,
       height: ref.style.height,
@@ -422,8 +421,10 @@ export const ResizableChart = (nodeProps) => {
     });
   }
 
-
   const handleConfirmDelete = () => {
+    if(node.attrs.chartData?.chartId) {
+      dispatch(deleteComponent(node.attrs?.chartLayoutId , parentComponentId));
+    }
     deleteNode()
     setShowDeleteModal(false)
   }
@@ -479,8 +480,6 @@ export const ResizableChart = (nodeProps) => {
             width: Math.round(boundingRect.width),
             height: Math.round(boundingRect.height)
           });
-
-
         }
       });
 
@@ -532,6 +531,7 @@ export const ResizableChart = (nodeProps) => {
         captionAlignment={node.attrs.captionAlignment || 'bottom'}
         data-chart-node-id={node.attrs.nodeId}
         data-chart-layout-id={node.attrs.chartLayoutId}
+        data-parent-id={parentComponentId}  // Optionally add to DOM for debugging
       >
         <ChartWrapper
           ref={chartWrapperRef}

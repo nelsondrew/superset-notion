@@ -284,7 +284,8 @@ export const TipTapEditor = ({ editMode, initialContent, component }) => {
   const [isMounted, setIsMounted] = useState(false)
   const [isEmojiModalOpen, setIsEmojiModalOpen] = useState(false)
   const [isDarkMode, setIsDarkMode] = useState(false)
-  const [isFullscreen, setIsFullscreen] = useState(false)
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const id = component?.id;
   
   const dispatch = useDispatch();
 
@@ -362,7 +363,9 @@ export const TipTapEditor = ({ editMode, initialContent, component }) => {
           render: renderItems,
         },
       }),
-      ChartExtension,
+      ChartExtension.configure({
+        parentId: id
+      }),
       CustomEmoji,
       EmojiSuggestion,
     ],
