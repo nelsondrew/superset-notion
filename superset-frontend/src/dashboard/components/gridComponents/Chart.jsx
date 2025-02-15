@@ -426,7 +426,6 @@ const Chart = props => {
   const cachedDttm =
     // eslint-disable-next-line camelcase
     queriesResponse?.map(({ cached_dttm }) => cached_dttm) || [];
-
   return (
     <SliceContainer
       className="chart-slice"
@@ -434,6 +433,7 @@ const Chart = props => {
       data-test-chart-id={props.id}
       data-test-viz-type={slice.viz_type}
       data-test-chart-name={slice.slice_name}
+      data-componentId={props?.componentId}
     >
       <SliceHeader
         ref={headerRef}

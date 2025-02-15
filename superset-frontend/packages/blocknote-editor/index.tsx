@@ -5,7 +5,6 @@ import TipTapEditor from "./components-tip-tap/TipTapEditor"
 import { useSelector} from 'react-redux';
 
 const EditorContainer = styled.div`
-  margin-top: 16px;
   text-align: left;
   border: 1px solid #eee;
   border-radius: 4px;

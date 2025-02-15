@@ -284,7 +284,8 @@ export const TipTapEditor = ({ editMode, initialContent, component }) => {
   const [isMounted, setIsMounted] = useState(false)
   const [isEmojiModalOpen, setIsEmojiModalOpen] = useState(false)
   const [isDarkMode, setIsDarkMode] = useState(false)
-  const [isFullscreen, setIsFullscreen] = useState(false)
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const id = component?.id;
   
   const dispatch = useDispatch();
 
@@ -362,7 +363,9 @@ export const TipTapEditor = ({ editMode, initialContent, component }) => {
           render: renderItems,
         },
       }),
-      ChartExtension,
+      ChartExtension.configure({
+        parentId: id
+      }),
       CustomEmoji,
       EmojiSuggestion,
     ],
@@ -371,11 +374,9 @@ export const TipTapEditor = ({ editMode, initialContent, component }) => {
     content: component?.meta?.editorJson || initialContent, 
     onCreate() {
       setIsMounted(true)
-      console.log('Editor created with content:', editor?.getJSON())
     },
     onUpdate: ({ editor }) => {
       debounceUpdateEditorComponent(editor.getJSON())
-      console.log('Editor updated:', editor.getJSON())
     },
     onFocus: () => {
       // When editor is focused, set data attribute on parent
@@ -431,7 +432,6 @@ export const TipTapEditor = ({ editMode, initialContent, component }) => {
   const toggleTheme = () => {
     setIsDarkMode(prev => {
       const newTheme = !prev;
-      console.log('Theme toggled:', newTheme ? 'dark' : 'light');
       return newTheme;
     });
   };

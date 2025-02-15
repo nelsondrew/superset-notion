@@ -22,6 +22,13 @@ export const ChartExtension = Node.create({
           'data-alignment': attributes.alignment,
         }),
       },
+      nodeId: {
+        default: null,
+        parseHTML: element => element.getAttribute('data-node-id'),
+        renderHTML: attributes => ({
+          'data-node-id': attributes.nodeId,
+        }),
+      },
       width: {
         default: '100%',
         parseHTML: element => element.getAttribute('width'),
@@ -60,6 +67,13 @@ export const ChartExtension = Node.create({
           'data-caption-width': attributes.captionWidth,
         }),
       },
+       chartLayoutId: {
+        default: null,
+        parseHTML: element => element.getAttribute('data-chart-layout-id'),
+        renderHTML: attributes => ({
+          'data-chart-layout-id': attributes.chartLayoutId,
+        }),
+      },
     }
   },
 
@@ -73,6 +87,12 @@ export const ChartExtension = Node.create({
 
   renderHTML({ HTMLAttributes }) {
     return ['div', { 'data-type': 'chart', ...HTMLAttributes }]
+  },
+
+  addOptions() {
+    return {
+      parentId: null,
+    }
   },
 
   addNodeView() {

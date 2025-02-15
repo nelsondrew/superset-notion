@@ -6,6 +6,8 @@ import { DeleteConfirmationModal } from './DeleteConfirmationModal'
 import { PortableChart } from '../components/PortableChart'
 import { useDispatch, useSelector } from 'react-redux'
 import { setUnsavedChanges } from 'src/dashboard/actions/dashboardState'
+import { v4 as uuidv4 } from 'uuid'
+import { deleteComponent } from 'src/dashboard/actions/dashboardLayout'
 
 const ChartContainer = styled.div`
   margin: 1rem 0;
@@ -326,29 +328,31 @@ const Input = styled.input`
   }
 `
 
+const generateShortId = () => {
+  // Take first 10 chars of UUID
+  return uuidv4().replace(/-/g, '').substring(0, 10);
+};
+
 export const ResizableChart = (nodeProps) => {
-  const { node, selected, updateAttributes, deleteNode } = nodeProps
+  const { node, selected, updateAttributes, deleteNode, extension } = nodeProps
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [sliceId, setSliceId] = useState(parseInt(node.attrs.chartId) || '');
+  const [editorChartId, setEditorChartId] = useState(node.attrs.nodeId || '');
+  const [editorChartLayoutId, setEditorChartLayoutId] = useState(node?.attrs?.chartLayoutId || '')
   const dispatch = useDispatch();
 
-  const [realSliceId, setRealSliceId] = useState(node.attrs.chartData?.chartId ||'');
+  const [realSliceId, setRealSliceId] = useState(node.attrs.chartData?.chartId || '');
   const [dimensions, setDimensions] = useState(() => {
-    // Try to load saved dimensions from localStorage first
-    console.log("initial height and width", {
-      width: parseInt(node.attrs.width) || 600,
-      height: parseInt(node.attrs.height) || 200
-    })
     return {
       width: parseInt(node.attrs.width) || 600,
       height: parseInt(node.attrs.height) || 200
     };
   });
-  
+
   const [wrapperDimensions, setWrapperDimensions] = useState({
-    width:  parseInt(node.attrs.width) || 0,
-    height:  parseInt(node.attrs.height) || 0
+    width: parseInt(node.attrs.width) || 0,
+    height: parseInt(node.attrs.height) || 0
   });
 
   const chartWrapperRef = useRef(null);
@@ -356,9 +360,7 @@ export const ResizableChart = (nodeProps) => {
   const chartContentRef = useRef(null);
   const editMode = useSelector(state => state?.dashboardState?.editMode);
 
-  useEffect(() => {
-    console.log(editMode, "edit mode from resizable")
-  },[editMode])
+  const parentComponentId = extension.options.parentId;  // Get parent ID from extension options
 
   useEffect(() => {
     if (node.attrs.chartId) {
@@ -367,8 +369,8 @@ export const ResizableChart = (nodeProps) => {
   }, [node.attrs.chartId])
 
   useEffect(() => {
-      dispatch(setUnsavedChanges(true));
-  },[wrapperDimensions.width , wrapperDimensions.height])
+    dispatch(setUnsavedChanges(true));
+  }, [wrapperDimensions.width, wrapperDimensions.height])
 
   useEffect(() => {
     const handleDeleteRequest = (event) => {
@@ -381,33 +383,22 @@ export const ResizableChart = (nodeProps) => {
     return () => window.removeEventListener('chart-delete-request', handleDeleteRequest)
   }, [selected])
 
-  // Save dimensions to localStorage when they change
+  // Update the useEffect that generates nodeId
   useEffect(() => {
-    if (node.attrs.chartId && dimensions.width && dimensions.height) {
-      localStorage.setItem(`chart-${node.attrs.chartId}-dimensions`, JSON.stringify(dimensions));
+    if (!node.attrs.nodeId) {
+      const nodeId = `chart-${generateShortId()}`; // Will generate something like "chart-a1b2c3d4e5"
+      updateAttributes({
+        nodeId: nodeId
+      });
+      setEditorChartId(nodeId);
     }
-  }, [dimensions, node.attrs.chartId]);
-
-  // Update wrapper dimensions when editMode changes
-  useEffect(() => {
-    if (!editMode) {
-      // In view mode, set wrapper dimensions to match saved dimensions
-      const savedDimensions = localStorage.getItem(`chart-${node.attrs.chartId}-dimensions`);
-      if (savedDimensions) {
-        const parsed = JSON.parse(savedDimensions);
-        setWrapperDimensions({
-          width: parsed.width,
-          height: parsed.height
-        });
-      }
-    }
-  }, [editMode, node.attrs.chartId]);
+  }, []);
 
   const handleResize = (e, direction, ref) => {
     if (selected) {
       const width = parseInt(ref.style.width.replace('px', ''));
       const height = parseInt(ref.style.height.replace('px', ''));
-      
+
       setDimensions({ width, height });
       updateAttributes({
         width: ref.style.width,
@@ -420,13 +411,9 @@ export const ResizableChart = (nodeProps) => {
   const handleResizeStop = (e, direction, ref) => {
     const width = parseInt(ref.style.width.replace('px', ''));
     const height = parseInt(ref.style.height.replace('px', ''));
-    
+
     setDimensions({ width, height });
-    // Save to localStorage on resize stop
-    if (node.attrs.chartId) {
-      localStorage.setItem(`chart-${node.attrs.chartId}-dimensions`, JSON.stringify({ width, height }));
-    }
-    
+
     updateAttributes({
       width: ref.style.width,
       height: ref.style.height,
@@ -434,8 +421,10 @@ export const ResizableChart = (nodeProps) => {
     });
   }
 
-
   const handleConfirmDelete = () => {
+    if(node.attrs.chartData?.chartId) {
+      dispatch(deleteComponent(node.attrs?.chartLayoutId , parentComponentId));
+    }
     deleteNode()
     setShowDeleteModal(false)
   }
@@ -491,8 +480,6 @@ export const ResizableChart = (nodeProps) => {
             width: Math.round(boundingRect.width),
             height: Math.round(boundingRect.height)
           });
-
-       
         }
       });
 
@@ -507,15 +494,18 @@ export const ResizableChart = (nodeProps) => {
   // Update the chart drop event listener
   useEffect(() => {
     const handleChartDrop = (event) => {
-      const { dropResult } = event.detail;
-      console.log(dropResult)
-      
+      const { dropResult, chartLayoutId = '' } = event.detail;
+
       // Handle the drop in the chart
       if (dropResult.dragging?.meta?.chartId) {
         const newSliceId = dropResult.dragging.meta.chartId;
         updateAttributes({
           chartData: dropResult.dragging.meta
         })
+        updateAttributes({
+          chartLayoutId: chartLayoutId
+        });
+        setEditorChartLayoutId(chartLayoutId)
         setRealSliceId(newSliceId);
         updateAttributes({
           chartId: newSliceId,
@@ -526,10 +516,8 @@ export const ResizableChart = (nodeProps) => {
     };
 
     const wrapperElement = chartWrapperRef.current;
-    console.log('Wrapper element:', wrapperElement);
-    
+
     if (wrapperElement) {
-      console.log('Adding chart-drop listener');
       wrapperElement.addEventListener('chart-drop', handleChartDrop);
       return () => {
         wrapperElement.removeEventListener('chart-drop', handleChartDrop);
@@ -539,12 +527,18 @@ export const ResizableChart = (nodeProps) => {
 
   return (
     <NodeViewWrapper>
-      <ChartContainer captionAlignment={node.attrs.captionAlignment || 'bottom'}>
-        <ChartWrapper 
+      <ChartContainer
+        captionAlignment={node.attrs.captionAlignment || 'bottom'}
+        data-chart-node-id={node.attrs.nodeId}
+        data-chart-layout-id={node.attrs.chartLayoutId}
+        data-parent-id={parentComponentId}  // Optionally add to DOM for debugging
+      >
+        <ChartWrapper
           ref={chartWrapperRef}
+          id={editorChartId}
           className='portable-chart-component'
-          alignment={node.attrs.alignment || 'center'} 
-          width={editMode ? dimensions.width : wrapperDimensions.width} 
+          alignment={node.attrs.alignment || 'center'}
+          width={editMode ? dimensions.width : wrapperDimensions.width}
           height={editMode ? dimensions.height : wrapperDimensions.height}
         >
           <Resizable
@@ -649,6 +643,7 @@ export const ResizableChart = (nodeProps) => {
                   sliceId={parseInt(realSliceId)}
                   width={parseInt(wrapperDimensions.width)}
                   height={parseInt(wrapperDimensions.height)}
+                  chartLayoutId={editorChartLayoutId}
                 />
               ) : (
                 'Chart'
