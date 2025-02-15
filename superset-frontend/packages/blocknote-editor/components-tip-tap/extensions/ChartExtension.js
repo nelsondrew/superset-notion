@@ -22,6 +22,13 @@ export const ChartExtension = Node.create({
           'data-alignment': attributes.alignment,
         }),
       },
+      nodeId: {
+        default: null,
+        parseHTML: element => element.getAttribute('data-node-id'),
+        renderHTML: attributes => ({
+          'data-node-id': attributes.nodeId,
+        }),
+      },
       width: {
         default: '100%',
         parseHTML: element => element.getAttribute('width'),

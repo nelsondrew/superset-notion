@@ -6,6 +6,7 @@ import { DeleteConfirmationModal } from './DeleteConfirmationModal'
 import { PortableChart } from '../components/PortableChart'
 import { useDispatch, useSelector } from 'react-redux'
 import { setUnsavedChanges } from 'src/dashboard/actions/dashboardState'
+import { v4 as uuidv4 } from 'uuid'
 
 const ChartContainer = styled.div`
   margin: 1rem 0;
@@ -326,20 +327,22 @@ const Input = styled.input`
   }
 `
 
+const generateShortId = () => {
+  // Take first 10 chars of UUID
+  return uuidv4().replace(/-/g, '').substring(0, 10);
+};
+
 export const ResizableChart = (nodeProps) => {
   const { node, selected, updateAttributes, deleteNode } = nodeProps
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [sliceId, setSliceId] = useState(parseInt(node.attrs.chartId) || '');
+  const [editorChartId, setEditorChartId] = useState(node.attrs.nodeId || '');
   const dispatch = useDispatch();
 
   const [realSliceId, setRealSliceId] = useState(node.attrs.chartData?.chartId ||'');
   const [dimensions, setDimensions] = useState(() => {
     // Try to load saved dimensions from localStorage first
-    console.log("initial height and width", {
-      width: parseInt(node.attrs.width) || 600,
-      height: parseInt(node.attrs.height) || 200
-    })
     return {
       width: parseInt(node.attrs.width) || 600,
       height: parseInt(node.attrs.height) || 200
@@ -402,6 +405,18 @@ export const ResizableChart = (nodeProps) => {
       }
     }
   }, [editMode, node.attrs.chartId]);
+
+  // Update the useEffect that generates nodeId
+  useEffect(() => {
+    if (!node.attrs.nodeId) {
+      const nodeId = `chart-${generateShortId()}`; // Will generate something like "chart-a1b2c3d4e5"
+      updateAttributes({
+        nodeId: nodeId
+      });
+      setEditorChartId(nodeId);
+    }
+  }, []);
+
 
   const handleResize = (e, direction, ref) => {
     if (selected) {
@@ -539,9 +554,13 @@ export const ResizableChart = (nodeProps) => {
 
   return (
     <NodeViewWrapper>
-      <ChartContainer captionAlignment={node.attrs.captionAlignment || 'bottom'}>
+      <ChartContainer 
+        captionAlignment={node.attrs.captionAlignment || 'bottom'}
+        data-chart-node-id={node.attrs.nodeId}
+      >
         <ChartWrapper 
           ref={chartWrapperRef}
+          id={editorChartId}
           className='portable-chart-component'
           alignment={node.attrs.alignment || 'center'} 
           width={editMode ? dimensions.width : wrapperDimensions.width} 

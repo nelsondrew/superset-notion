@@ -7,7 +7,6 @@ import BlockNoteEditor from "../../../../packages/blocknote-editor/index"
 import DeleteComponentButton from '../DeleteComponentButton';
 
 const HelloDiv = styled.div`
-  padding: 16px;
   background-color: #fff;
   border: 1px solid #ddd;
   border-radius: 4px;
@@ -130,7 +129,20 @@ export default function Hello(props) {
       );
     });
 
-    if (!highlightedChart) {
+   
+
+    const highlightedChartId = highlightedChart?.id || ''
+    const metaEditorJsonContent = component?.meta?.editorJson?.content || [];
+    const chartElementsOfEditor = metaEditorJsonContent.filter((item) => item?.type === 'chart');
+    const highlightedChartMeta = chartElementsOfEditor.find((item) => item?.attrs?.nodeId === highlightedChartId);
+    const alreadyHasChart = !!(highlightedChartMeta?.attrs?.chartData?.chartId)
+
+    if(highlightedChartId && alreadyHasChart) {
+      console.log("Drop cancelled , it already has a chart");
+      return;
+    }
+
+    if (!highlightedChart || alreadyHasChart) {
       console.log('Drop cancelled - not on chart element');
       return;
     }
