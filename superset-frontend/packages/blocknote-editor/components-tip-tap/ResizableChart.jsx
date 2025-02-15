@@ -342,7 +342,6 @@ export const ResizableChart = (nodeProps) => {
 
   const [realSliceId, setRealSliceId] = useState(node.attrs.chartData?.chartId ||'');
   const [dimensions, setDimensions] = useState(() => {
-    // Try to load saved dimensions from localStorage first
     return {
       width: parseInt(node.attrs.width) || 600,
       height: parseInt(node.attrs.height) || 200
@@ -434,10 +433,7 @@ export const ResizableChart = (nodeProps) => {
     const height = parseInt(ref.style.height.replace('px', ''));
     
     setDimensions({ width, height });
-    // Save to localStorage on resize stop
-    if (node.attrs.chartId) {
-      localStorage.setItem(`chart-${node.attrs.chartId}-dimensions`, JSON.stringify({ width, height }));
-    }
+   
     
     updateAttributes({
       width: ref.style.width,
