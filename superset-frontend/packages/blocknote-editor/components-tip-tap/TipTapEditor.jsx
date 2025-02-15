@@ -371,11 +371,9 @@ export const TipTapEditor = ({ editMode, initialContent, component }) => {
     content: component?.meta?.editorJson || initialContent, 
     onCreate() {
       setIsMounted(true)
-      console.log('Editor created with content:', editor?.getJSON())
     },
     onUpdate: ({ editor }) => {
       debounceUpdateEditorComponent(editor.getJSON())
-      console.log('Editor updated:', editor.getJSON())
     },
     onFocus: () => {
       // When editor is focused, set data attribute on parent
@@ -431,7 +429,6 @@ export const TipTapEditor = ({ editMode, initialContent, component }) => {
   const toggleTheme = () => {
     setIsDarkMode(prev => {
       const newTheme = !prev;
-      console.log('Theme toggled:', newTheme ? 'dark' : 'light');
       return newTheme;
     });
   };
