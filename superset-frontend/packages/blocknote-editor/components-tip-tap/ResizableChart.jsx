@@ -338,19 +338,20 @@ export const ResizableChart = (nodeProps) => {
   const [showEditModal, setShowEditModal] = useState(false)
   const [sliceId, setSliceId] = useState(parseInt(node.attrs.chartId) || '');
   const [editorChartId, setEditorChartId] = useState(node.attrs.nodeId || '');
+  const [editorChartLayoutId, setEditorChartLayoutId] = useState(node?.attrs?.chartLayoutId || '')
   const dispatch = useDispatch();
 
-  const [realSliceId, setRealSliceId] = useState(node.attrs.chartData?.chartId ||'');
+  const [realSliceId, setRealSliceId] = useState(node.attrs.chartData?.chartId || '');
   const [dimensions, setDimensions] = useState(() => {
     return {
       width: parseInt(node.attrs.width) || 600,
       height: parseInt(node.attrs.height) || 200
     };
   });
-  
+
   const [wrapperDimensions, setWrapperDimensions] = useState({
-    width:  parseInt(node.attrs.width) || 0,
-    height:  parseInt(node.attrs.height) || 0
+    width: parseInt(node.attrs.width) || 0,
+    height: parseInt(node.attrs.height) || 0
   });
 
   const chartWrapperRef = useRef(null);
@@ -366,8 +367,8 @@ export const ResizableChart = (nodeProps) => {
   }, [node.attrs.chartId])
 
   useEffect(() => {
-      dispatch(setUnsavedChanges(true));
-  },[wrapperDimensions.width , wrapperDimensions.height])
+    dispatch(setUnsavedChanges(true));
+  }, [wrapperDimensions.width, wrapperDimensions.height])
 
   useEffect(() => {
     const handleDeleteRequest = (event) => {
@@ -380,27 +381,7 @@ export const ResizableChart = (nodeProps) => {
     return () => window.removeEventListener('chart-delete-request', handleDeleteRequest)
   }, [selected])
 
-  // Save dimensions to localStorage when they change
-  useEffect(() => {
-    if (node.attrs.chartId && dimensions.width && dimensions.height) {
-      localStorage.setItem(`chart-${node.attrs.chartId}-dimensions`, JSON.stringify(dimensions));
-    }
-  }, [dimensions, node.attrs.chartId]);
 
-  // Update wrapper dimensions when editMode changes
-  useEffect(() => {
-    if (!editMode) {
-      // In view mode, set wrapper dimensions to match saved dimensions
-      const savedDimensions = localStorage.getItem(`chart-${node.attrs.chartId}-dimensions`);
-      if (savedDimensions) {
-        const parsed = JSON.parse(savedDimensions);
-        setWrapperDimensions({
-          width: parsed.width,
-          height: parsed.height
-        });
-      }
-    }
-  }, [editMode, node.attrs.chartId]);
 
   // Update the useEffect that generates nodeId
   useEffect(() => {
@@ -413,12 +394,11 @@ export const ResizableChart = (nodeProps) => {
     }
   }, []);
 
-
   const handleResize = (e, direction, ref) => {
     if (selected) {
       const width = parseInt(ref.style.width.replace('px', ''));
       const height = parseInt(ref.style.height.replace('px', ''));
-      
+
       setDimensions({ width, height });
       updateAttributes({
         width: ref.style.width,
@@ -431,10 +411,10 @@ export const ResizableChart = (nodeProps) => {
   const handleResizeStop = (e, direction, ref) => {
     const width = parseInt(ref.style.width.replace('px', ''));
     const height = parseInt(ref.style.height.replace('px', ''));
-    
+
     setDimensions({ width, height });
-   
-    
+
+
     updateAttributes({
       width: ref.style.width,
       height: ref.style.height,
@@ -500,7 +480,7 @@ export const ResizableChart = (nodeProps) => {
             height: Math.round(boundingRect.height)
           });
 
-       
+
         }
       });
 
@@ -515,14 +495,18 @@ export const ResizableChart = (nodeProps) => {
   // Update the chart drop event listener
   useEffect(() => {
     const handleChartDrop = (event) => {
-      const { dropResult } = event.detail;
-      
+      const { dropResult, chartLayoutId = '' } = event.detail;
+
       // Handle the drop in the chart
       if (dropResult.dragging?.meta?.chartId) {
         const newSliceId = dropResult.dragging.meta.chartId;
         updateAttributes({
           chartData: dropResult.dragging.meta
         })
+        updateAttributes({
+          chartLayoutId: chartLayoutId
+        });
+        setEditorChartLayoutId(chartLayoutId)
         setRealSliceId(newSliceId);
         updateAttributes({
           chartId: newSliceId,
@@ -533,7 +517,7 @@ export const ResizableChart = (nodeProps) => {
     };
 
     const wrapperElement = chartWrapperRef.current;
-    
+
     if (wrapperElement) {
       wrapperElement.addEventListener('chart-drop', handleChartDrop);
       return () => {
@@ -544,16 +528,17 @@ export const ResizableChart = (nodeProps) => {
 
   return (
     <NodeViewWrapper>
-      <ChartContainer 
+      <ChartContainer
         captionAlignment={node.attrs.captionAlignment || 'bottom'}
         data-chart-node-id={node.attrs.nodeId}
+        data-chart-layout-id={node.attrs.chartLayoutId}
       >
-        <ChartWrapper 
+        <ChartWrapper
           ref={chartWrapperRef}
           id={editorChartId}
           className='portable-chart-component'
-          alignment={node.attrs.alignment || 'center'} 
-          width={editMode ? dimensions.width : wrapperDimensions.width} 
+          alignment={node.attrs.alignment || 'center'}
+          width={editMode ? dimensions.width : wrapperDimensions.width}
           height={editMode ? dimensions.height : wrapperDimensions.height}
         >
           <Resizable
@@ -658,6 +643,7 @@ export const ResizableChart = (nodeProps) => {
                   sliceId={parseInt(realSliceId)}
                   width={parseInt(wrapperDimensions.width)}
                   height={parseInt(wrapperDimensions.height)}
+                  chartLayoutId={editorChartLayoutId}
                 />
               ) : (
                 'Chart'

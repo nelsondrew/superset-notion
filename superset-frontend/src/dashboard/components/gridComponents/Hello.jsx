@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import PropTypes from 'prop-types';
 import { styled, t } from '@superset-ui/core';
+import { useSelector } from 'react-redux';
 import { DragDroppable } from '../dnd/DragDroppable';
 import { CHART_TYPE, PORTABLE_CHART_TYPE } from '../../util/componentTypes';
 import BlockNoteEditor from "../../../../packages/blocknote-editor/index"
@@ -42,8 +43,21 @@ const propTypes = {
 };
 
 export default function Hello(props) {
+  const {
+    id,
+    component,
+    parentComponent,
+    index,
+    depth,
+    deleteComponent,
+  } = props;
+
   const { editMode } = props;
   const [isEditorFocused, setIsEditorFocused] = useState(false);
+  const pendingChartDropRef = useRef(null);
+  
+  // Add selector to get latest dashboard layout
+  const dashboardLayout = useSelector(state => state.dashboardLayout.present);
 
   useEffect(() => {
     const editorElement = document.querySelector('.blocknote-editor');
@@ -64,6 +78,35 @@ export default function Hello(props) {
       return () => observer.disconnect();
     }
   }, []);
+
+  // Watch for changes in dashboard layout
+  useEffect(() => {
+    if (pendingChartDropRef.current) {
+      const { previousChildrenIds, highlightedChart, dropResult } = pendingChartDropRef.current;
+      const updatedComponent = dashboardLayout[id];
+      const updatedChildren = updatedComponent?.children || [];
+      
+      // Find the newly added child ID
+      const newChildId = updatedChildren
+        .find(id => !previousChildrenIds.includes(id));
+
+      if (newChildId) {
+        // Emit custom event with dropResult data and new chart ID
+        const chartDropEvent = new CustomEvent('chart-drop', {
+          detail: {
+            dropResult,
+            chartLayoutId: newChildId,
+            targetElement: highlightedChart
+          },
+          bubbles: true
+        });
+        highlightedChart.dispatchEvent(chartDropEvent);
+        
+        // Clear the pending drop
+        pendingChartDropRef.current = null;
+      }
+    }
+  }, [props.component]);
 
   const handleHover = (hoverProps, monitor) => {
     // Make sure we have a monitor
@@ -105,20 +148,13 @@ export default function Hello(props) {
       element.classList.remove('drag-over');
     });
 
-    console.log("Drop triggered in Hello", dropResult);
-    const { component } = props;
-
-    // Get drop coordinates from monitor
     const clientOffset = monitor.getClientOffset();
     if (!clientOffset) {
       console.log('No client offset found');
       return;
     }
 
-    // Find all chart elements in the editor
     const chartElements = document.querySelectorAll('.portable-chart-component');
-    
-    // Find the highlighted chart element and emit event
     const highlightedChart = Array.from(chartElements).find(element => {
       const rect = element.getBoundingClientRect();
       return (
@@ -129,13 +165,11 @@ export default function Hello(props) {
       );
     });
 
-   
-
-    const highlightedChartId = highlightedChart?.id || ''
+    const highlightedChartId = highlightedChart?.id || '';
     const metaEditorJsonContent = component?.meta?.editorJson?.content || [];
     const chartElementsOfEditor = metaEditorJsonContent.filter((item) => item?.type === 'chart');
     const highlightedChartMeta = chartElementsOfEditor.find((item) => item?.attrs?.nodeId === highlightedChartId);
-    const alreadyHasChart = !!(highlightedChartMeta?.attrs?.chartData?.chartId)
+    const alreadyHasChart = !!(highlightedChartMeta?.attrs?.chartData?.chartId);
 
     if(highlightedChartId && alreadyHasChart) {
       console.log("Drop cancelled , it already has a chart");
@@ -147,20 +181,21 @@ export default function Hello(props) {
       return;
     }
 
-    // Emit custom event with dropResult data
-    const chartDropEvent = new CustomEvent('chart-drop', {
-      detail: {
-        dropResult,
-        targetElement: highlightedChart
-      },
-      bubbles: true
-    });
-    highlightedChart.dispatchEvent(chartDropEvent);
+    // Store the current children IDs before the drop
+    const previousChildrenIds = component.children ? component.children.map(child => child.id) : [];
+
+    // Save drop details in ref for later processing
+    pendingChartDropRef.current = {
+      previousChildrenIds,
+      highlightedChart,
+      dropResult
+    };
 
     if (!component.children) {
       component.children = [];
     }
     
+    // Handle the component drop
     props.handleComponentDrop({
       ...dropResult,
       destination: {
@@ -171,15 +206,6 @@ export default function Hello(props) {
       },
     });
   };
-
-  const {
-    id,
-    component,
-    parentComponent,
-    index,
-    depth,
-    deleteComponent,
-  } = props;
 
   const handleDelete = () => {
     deleteComponent(id, parentComponent.id);

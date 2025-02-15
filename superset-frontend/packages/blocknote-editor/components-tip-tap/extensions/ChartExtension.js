@@ -67,6 +67,13 @@ export const ChartExtension = Node.create({
           'data-caption-width': attributes.captionWidth,
         }),
       },
+       chartLayoutId: {
+        default: null,
+        parseHTML: element => element.getAttribute('data-chart-layout-id'),
+        renderHTML: attributes => ({
+          'data-chart-layout-id': attributes.chartLayoutId,
+        }),
+      },
     }
   },
 

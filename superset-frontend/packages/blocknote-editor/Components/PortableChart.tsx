@@ -1,5 +1,5 @@
 import React from 'react';
-import { useSelector, useDispatch } from 'react-redux';
+import { useSelector} from 'react-redux';
 import Chart from 'src/dashboard/components/gridComponents/Chart';
 import { noop } from 'lodash';
 import styled from 'styled-components';
@@ -8,6 +8,7 @@ interface PortableChartProps {
   sliceId: number;
   width?: number;
   height?: number;
+  chartLayoutId: string;
 }
 
 const ChartWrapper = styled.div`
@@ -21,12 +22,8 @@ export const PortableChart: React.FC<PortableChartProps> = ({
   sliceId,
   width = 600,
   height = 400,
+  chartLayoutId = '',
 }) => {
-  const dispatch = useDispatch();
-  // Ensure width and height are numbers
-  const numericWidth = typeof width === 'string' ? parseInt(width) : width;
-  const numericHeight = typeof height === 'string' ? parseInt(height) : height;
-  const state = useSelector(state => state);
 
   const sliceEntityData = useSelector((state) => state?.sliceEntities?.slices[sliceId]);
 
@@ -35,7 +32,7 @@ export const PortableChart: React.FC<PortableChartProps> = ({
   return (
     <ChartWrapper >
       <Chart
-        componentId={`CHART-${sliceId}`} // Following dashboard naming convention
+        componentId={chartLayoutId} // Following dashboard naming convention
         id={sliceId}
         dashboardId={39} // Not in a dashboard context
         width={width}
