@@ -36,6 +36,7 @@ import { updateComponents } from 'src/dashboard/actions/dashboardLayout'
 import { debounce } from 'lodash'
 import { Moon, Sun  } from 'lucide-react'
 import { TabIndent } from './extensions/TabIndentExtension'
+import { exportToDocx } from '../utils/documentExport'
 
 const EditorContainer = styled.div`
   background: ${props => props.$isDarkMode ? '#1A1B1E' : '#fff'};
@@ -285,10 +286,11 @@ export const TipTapEditor = ({ editMode, initialContent, component }) => {
   const [isMounted, setIsMounted] = useState(false)
   const [isEmojiModalOpen, setIsEmojiModalOpen] = useState(false)
   const [isDarkMode, setIsDarkMode] = useState(false)
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  const id = component?.id;
+  const [isFullscreen, setIsFullscreen] = useState(false)
+  const [isExporting, setIsExporting] = useState(false)
   
-  const dispatch = useDispatch();
+  const id = component?.id
+  const dispatch = useDispatch()
 
   const updateEditorComponentMeta = (editorJsonContent) => {
     if(component) {
@@ -433,10 +435,10 @@ export const TipTapEditor = ({ editMode, initialContent, component }) => {
 
   const toggleTheme = () => {
     setIsDarkMode(prev => {
-      const newTheme = !prev;
-      return newTheme;
-    });
-  };
+      const newTheme = !prev
+      return newTheme
+    })
+  }
 
   return (
     <EditorContainer 
@@ -606,6 +608,22 @@ export const TipTapEditor = ({ editMode, initialContent, component }) => {
         </div>
         <Button onClick={() => setIsEmojiModalOpen(true)}>
           Add Emoji
+        </Button>
+        <Button
+          onClick={async () => {
+            try {
+              setIsExporting(true)
+              await exportToDocx(editor)
+            } catch (error) {
+              console.error('Failed to export document:', error)
+            } finally {
+              setIsExporting(false)
+            }
+          }}
+          disabled={isExporting}
+          $isDarkMode={isDarkMode}
+        >
+          {isExporting ? 'Exporting...' : 'Export to DOCX'}
         </Button>
       </MenuBar>
       {editor && <TextBubbleMenu editor={editor} />}
