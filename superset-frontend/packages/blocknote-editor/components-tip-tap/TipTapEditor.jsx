@@ -35,6 +35,7 @@ import { useDispatch } from 'react-redux'
 import { updateComponents } from 'src/dashboard/actions/dashboardLayout'
 import { debounce } from 'lodash'
 import { Moon, Sun  } from 'lucide-react'
+import { TabIndent } from './extensions/TabIndentExtension'
 
 const EditorContainer = styled.div`
   background: ${props => props.$isDarkMode ? '#1A1B1E' : '#fff'};
@@ -368,6 +369,7 @@ export const TipTapEditor = ({ editMode, initialContent, component }) => {
       }),
       CustomEmoji,
       EmojiSuggestion,
+      TabIndent,
     ],
     editable: editMode,
     injectCSS: false,
