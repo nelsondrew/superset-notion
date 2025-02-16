@@ -37,6 +37,11 @@ import { debounce } from 'lodash'
 import { Moon, Sun  } from 'lucide-react'
 import { TabIndent } from './extensions/TabIndentExtension'
 import { exportToDocx } from '../utils/documentExport'
+import { Comment } from './extensions/CommentExtension'
+import { CommentBubbleMenu } from './CommentBubbleMenu'
+import { CommentsThread } from './CommentsThread'
+import { v4 as uuidv4 } from 'uuid'
+import { createPortal } from 'react-dom'
 
 const EditorContainer = styled.div`
   background: ${props => props.$isDarkMode ? '#1A1B1E' : '#fff'};
@@ -92,6 +97,15 @@ const EditorContainer = styled.div`
       th {
         background-color: ${props => props.$isDarkMode ? '#2D2D2D' : '#f8f9fa'};
       }
+    }
+
+    .comment-highlight {
+      background-color: #fef08a;
+      cursor: pointer;
+    }
+
+    .comment-mark {
+      background-color: #fef08a;
     }
   }
 `
@@ -282,15 +296,31 @@ const FullscreenContainer = styled.div`
   }
 `
 
+const PopoverContainer = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 1000;
+`
+
 export const TipTapEditor = ({ editMode, initialContent, component }) => {
   const [isMounted, setIsMounted] = useState(false)
   const [isEmojiModalOpen, setIsEmojiModalOpen] = useState(false)
   const [isDarkMode, setIsDarkMode] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
+  const [comments, setComments] = useState({}) // Map of commentId -> array of comments
+  const [activeCommentMark, setActiveCommentMark] = useState(null)
+  const [commentAnchorEl, setCommentAnchorEl] = useState(null)
   
   const id = component?.id
   const dispatch = useDispatch()
+
+  // Add state for popover portal container
+  const [portalContainer, setPortalContainer] = useState(null)
 
   const updateEditorComponentMeta = (editorJsonContent) => {
     if(component) {
@@ -372,6 +402,7 @@ export const TipTapEditor = ({ editMode, initialContent, component }) => {
       CustomEmoji,
       EmojiSuggestion,
       TabIndent,
+      Comment,
     ],
     editable: editMode,
     injectCSS: false,
@@ -404,6 +435,91 @@ export const TipTapEditor = ({ editMode, initialContent, component }) => {
       editor.setEditable(editMode)
     }
   }, [editor, editMode])
+
+  // Move handleClick inside useEffect to avoid recreating it on every render
+  useEffect(() => {
+    if (!editor) return
+
+    const handleClick = (event) => {
+      // Get the clicked element
+      const clickedElement = event.target
+      
+      // Check if we clicked inside a highlighted text
+      if (clickedElement.closest('.comment-highlight')) {
+        // Get the position in the document
+        const pos = editor.view.posAtDOM(clickedElement, 0)
+        if (typeof pos !== 'undefined') {
+          // Get the parent nodes at this position
+          const $pos = editor.state.doc.resolve(pos)
+          
+          // Find the comment mark by traversing up through parent nodes
+          let commentMark = null
+          
+          // First check immediate marks at this position
+          const marks = $pos.marks()
+          commentMark = marks.find(mark => mark.type.name === 'comment')
+          
+          // If not found, check the current node's marks
+          if (!commentMark) {
+            const node = $pos.node()
+            if (node.marks) {
+              commentMark = node.marks.find(mark => mark.type.name === 'comment')
+            }
+          }
+          
+          // If still not found, traverse up through parent nodes
+          if (!commentMark) {
+            for (let depth = $pos.depth; depth >= 0; depth--) {
+              const node = $pos.node(depth)
+              if (node.type.name === 'listItem' || node.type.name === 'paragraph' || node.type.name === 'text') {
+                // Check node's own marks
+                if (node.marks) {
+                  commentMark = node.marks.find(mark => mark.type.name === 'comment')
+                  if (commentMark) break
+                }
+                
+                // Check all text nodes within this node
+                node.descendants((childNode, childPos) => {
+                  if (childNode.type.name === 'text' && childNode.marks) {
+                    const mark = childNode.marks.find(m => m.type.name === 'comment')
+                    if (mark) {
+                      commentMark = mark
+                      return false // Stop traversing once found
+                    }
+                  }
+                })
+                
+                if (commentMark) break
+              }
+            }
+          }
+
+          if (commentMark) {
+            setActiveCommentMark(commentMark.attrs)
+            setCommentAnchorEl(clickedElement)
+          }
+        }
+      }
+    }
+
+    const editorContent = document.querySelector('.ProseMirror')
+    if (editorContent) {
+      editorContent.addEventListener('click', handleClick)
+      return () => editorContent.removeEventListener('click', handleClick)
+    }
+  }, [editor])
+
+  useEffect(() => {
+    // Create container for popovers
+    const container = document.createElement('div')
+    container.className = 'popover-portal-container'
+    document.body.appendChild(container)
+    setPortalContainer(container)
+
+    return () => {
+      document.body.removeChild(container)
+    }
+  }, [])
 
   // Don't render until client-side
   if (!isMounted) {
@@ -438,6 +554,51 @@ export const TipTapEditor = ({ editMode, initialContent, component }) => {
       const newTheme = !prev
       return newTheme
     })
+  }
+
+  const handleAddComment = (selection, anchorEl) => {
+    const from = selection.from
+    const $from = editor.state.doc.resolve(from)
+    
+    // Check for existing comment marks in the current node and its parents
+    let existingCommentMark = null
+    
+    // Check immediate marks
+    const marks = $from.marks()
+    existingCommentMark = marks.find(mark => mark.type.name === 'comment')
+    
+    // If not found, check parent nodes
+    if (!existingCommentMark) {
+      for (let depth = $from.depth; depth > 0; depth--) {
+        const node = $from.node(depth)
+        if (node.type.name === 'listItem' || node.type.name === 'paragraph') {
+          node.descendants((node, pos) => {
+            if (node.type.name === 'text') {
+              const marks = node.marks
+              const mark = marks.find(m => m.type.name === 'comment')
+              if (mark) {
+                existingCommentMark = mark
+                return false
+              }
+            }
+          })
+          if (existingCommentMark) break
+        }
+      }
+    }
+
+    if (existingCommentMark) {
+      setActiveCommentMark(existingCommentMark.attrs)
+    } else {
+      // Only create the mark object, but don't apply it yet
+      const newMark = { 
+        commentId: uuidv4(),
+        comments: []
+      }
+      // Just set the active mark without applying it to the text
+      setActiveCommentMark(newMark)
+    }
+    setCommentAnchorEl(anchorEl)
   }
 
   return (
@@ -626,8 +787,31 @@ export const TipTapEditor = ({ editMode, initialContent, component }) => {
           {isExporting ? 'Exporting...' : 'Export to DOCX'}
         </Button>
       </MenuBar>
-      {editor && <TextBubbleMenu editor={editor} />}
+      {editor && (
+        <TextBubbleMenu 
+          editor={editor} 
+          onAddComment={handleAddComment}
+        />
+      )}
       {editor && <ChartBubbleMenu editor={editor} />}
+      {portalContainer && createPortal(
+        <PopoverContainer>
+          {activeCommentMark && (
+            <CommentsThread
+              comments={activeCommentMark.comments || []}
+              editor={editor}
+              activeCommentMark={activeCommentMark}
+              setActiveCommentMark={setActiveCommentMark}
+              onClose={() => {
+                setActiveCommentMark(null)
+                setCommentAnchorEl(null)
+              }}
+              anchorEl={commentAnchorEl}
+            />
+          )}
+        </PopoverContainer>,
+        portalContainer
+      )}
       <AddEmojiModal
         isOpen={isEmojiModalOpen}
         onClose={() => setIsEmojiModalOpen(false)}
