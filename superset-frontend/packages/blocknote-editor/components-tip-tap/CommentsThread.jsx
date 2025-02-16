@@ -239,7 +239,8 @@ export const CommentsThread = ({
     }
 
     const handleClickOutside = (event) => {
-      if (threadRef.current && !threadRef.current.contains(event.target)) {
+      if (!threadRef.current?.contains(event.target) && 
+          !anchorEl?.contains(event.target)) {
         onClose()
       }
     }

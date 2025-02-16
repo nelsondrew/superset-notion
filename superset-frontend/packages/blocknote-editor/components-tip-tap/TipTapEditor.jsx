@@ -304,6 +304,11 @@ const PopoverContainer = styled.div`
   height: 100vh;
   pointer-events: none;
   z-index: 1000;
+
+  /* Add this to allow clicks on children */
+  & > * {
+    pointer-events: auto;
+  }
 `
 
 export const TipTapEditor = ({ editMode, initialContent, component }) => {
