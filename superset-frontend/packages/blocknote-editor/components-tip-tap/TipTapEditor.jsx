@@ -437,7 +437,7 @@ export const TipTapEditor = ({ editMode, initialContent, component  , hoveredPos
     editorProps: {
       decorations: (state) => {
         if (hoveredPos === null) return DecorationSet.empty;
-        console.log("received the para" , hoveredPos)
+        console.log("received the para", hoveredPos);
 
         try {
           const $pos = state.doc.resolve(hoveredPos);
@@ -448,7 +448,7 @@ export const TipTapEditor = ({ editMode, initialContent, component  , hoveredPos
             if (node.type.name === 'paragraph') {
               return DecorationSet.create(state.doc, [
                 Decoration.node($pos.before(depth), $pos.after(depth), {
-                  style: 'background-color: red'
+                  style: 'border-top: 2px solid #3b82f6'
                 })
               ]);
             }

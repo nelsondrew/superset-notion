@@ -6,6 +6,7 @@ import { DragDroppable } from '../dnd/DragDroppable';
 import { CHART_TYPE, PORTABLE_CHART_TYPE } from '../../util/componentTypes';
 import BlockNoteEditor from "../../../../packages/blocknote-editor/index"
 import DeleteComponentButton from '../DeleteComponentButton';
+import { v4 as uuidv4 } from 'uuid';
 
 const HelloDiv = styled.div`
   background-color: #fff;
@@ -188,6 +189,79 @@ export default function Hello(props) {
       return;
     }
 
+    const editor = window.editor;
+    if (!editor) return;
+
+    if (hoveredPos !== null) {
+      try {
+        // First get the node at the hovered position
+        const $pos = editor.state.doc.resolve(hoveredPos);
+        let targetPos = hoveredPos;
+
+        // Find the paragraph node
+        for (let depth = $pos.depth; depth > 0; depth--) {
+          const node = $pos.node(depth);
+          if (node.type.name === 'paragraph') {
+            targetPos = $pos.before(depth);
+            break;
+          }
+        }
+
+        const chartId = uuidv4();
+        
+        // Create a new chart node
+        editor.chain()
+          .focus()
+          .setNodeSelection(targetPos)
+          .insertContent({
+            type: 'chart',
+            attrs: {
+              nodeId: chartId,
+              chartData: null,
+              width : "800px",
+              height: "400px"
+            }
+          })
+          .run();
+
+        // Get the DOM node directly from editor view
+        const chartNode = editor.view.domAtPos(targetPos + 1);
+        const chartElement = chartNode?.node?.querySelector('.portable-chart-component');
+
+        // Get the current children IDs before the drop
+        const previousChildrenIds = component.children ? component.children : [];
+
+        // Save drop details in ref with the chart element
+        pendingChartDropRef.current = {
+          previousChildrenIds,
+          highlightedChart: chartElement,
+          dropResult
+        };
+
+        if (!component.children) {
+          component.children = [];
+        }
+        
+        // Handle the component drop
+        props.handleComponentDrop({
+          ...dropResult,
+          destination: {
+            ...dropResult.destination,
+            id: component.id,
+            type: component.type,
+            index: component.children.length,
+          },
+        });
+
+        setHoveredPos(null);
+
+        return;
+      } catch (error) {
+        console.error('Error inserting chart:', error);
+      }
+    }
+
+    // Fallback to old chart handling if no hovered position
     const chartElements = document.querySelectorAll('.portable-chart-component');
     const highlightedChart = Array.from(chartElements).find(element => {
       const rect = element.getBoundingClientRect();
