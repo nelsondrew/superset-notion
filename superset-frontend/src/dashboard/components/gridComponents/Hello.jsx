@@ -55,6 +55,7 @@ export default function Hello(props) {
   const { editMode } = props;
   const [isEditorFocused, setIsEditorFocused] = useState(false);
   const pendingChartDropRef = useRef(null);
+  const [hoveredPos , setHoveredPos] = useState(null);
   
   // Add selector to get latest dashboard layout
   const dashboardLayout = useSelector(state => state.dashboardLayout.present);
@@ -109,21 +110,55 @@ export default function Hello(props) {
   }, [props.component]);
 
   const handleHover = (hoverProps, monitor) => {
-    // Make sure we have a monitor
     if (!monitor) return;
     
-    if (!monitor.isOver()) return;
+    const editor = window.editor;
+    if (!editor) return;
+
+    if (!monitor.isOver()) {
+      // Clear decorations when not hovering
+      editor.setHoveredPos(null);
+      return;
+    }
     
     const clientOffset = monitor.getClientOffset();
     if (!clientOffset) return;
 
-    // Only handle hover for chart types
     const itemType = monitor.getItem()?.type;
     if (itemType !== CHART_TYPE) return;
 
-    // Find all chart elements in the editor
+    // Get the position in the document from mouse coordinates
+    const pos = editor.view.posAtCoords({
+      left: clientOffset.x,
+      top: clientOffset.y
+    });
+
+    if (pos) {
+      // Get the node at this position
+      const $pos = editor.state.doc.resolve(pos.pos);
+      
+      // Find the closest paragraph node
+      let depth = $pos.depth;
+      while (depth > 0) {
+        const node = $pos.node(depth);
+        if (node.type.name === 'paragraph') {
+          console.log("got the para" ,node)
+          // Set the position to highlight
+          const pos = $pos.before(depth);
+          console.log(pos, "from hello")
+          setHoveredPos(pos+1)
+          // editor.setHoveredPos($pos.before(depth));
+          break;
+        }
+        depth--;
+      }
+    } else {
+      setHoveredPos(null);
+      // editor.setHoveredPos(null);
+    }
+
+    // Handle chart highlights
     const chartElements = document.querySelectorAll('.portable-chart-component');
-    
     chartElements.forEach(element => {
       const rect = element.getBoundingClientRect();
       const isOverChart = (
@@ -133,7 +168,6 @@ export default function Hello(props) {
         clientOffset.y <= rect.bottom
       );
       
-      // Add or remove drag-over class based on hover position
       if (isOverChart) {
         element.classList.add('drag-over');
       } else {
@@ -227,7 +261,7 @@ export default function Hello(props) {
     >
       {({ dragSourceRef }) => (
         <HelloDiv ref={dragSourceRef}>
-          <BlockNoteEditor component={component} />
+          <BlockNoteEditor hoveredPos={hoveredPos} setHoveredPos={setHoveredPos} component={component} />
           {editMode && (
             <DeleteButtonContainer editMode={editMode}>
               <DeleteComponentButton

@@ -42,6 +42,7 @@ import { CommentBubbleMenu } from './CommentBubbleMenu'
 import { CommentsThread } from './CommentsThread'
 import { v4 as uuidv4 } from 'uuid'
 import { createPortal } from 'react-dom'
+import { DecorationSet, Decoration } from 'prosemirror-view'
 
 const EditorContainer = styled.div`
   background: ${props => props.$isDarkMode ? '#1A1B1E' : '#fff'};
@@ -311,7 +312,7 @@ const PopoverContainer = styled.div`
   }
 `
 
-export const TipTapEditor = ({ editMode, initialContent, component }) => {
+export const TipTapEditor = ({ editMode, initialContent, component  , hoveredPos , setHoveredPos }) => {
   const [isMounted, setIsMounted] = useState(false)
   const [isEmojiModalOpen, setIsEmojiModalOpen] = useState(false)
   const [isDarkMode, setIsDarkMode] = useState(false)
@@ -320,6 +321,7 @@ export const TipTapEditor = ({ editMode, initialContent, component }) => {
   const [comments, setComments] = useState({}) // Map of commentId -> array of comments
   const [activeCommentMark, setActiveCommentMark] = useState(null)
   const [commentAnchorEl, setCommentAnchorEl] = useState(null)
+  // const [hoveredPos, setHoveredPos] = useState(null)
   
   const id = component?.id
   const dispatch = useDispatch()
@@ -432,7 +434,53 @@ export const TipTapEditor = ({ editMode, initialContent, component }) => {
         editorContainer.setAttribute('data-editor-focused', 'false');
       }
     },
+    editorProps: {
+      decorations: (state) => {
+        if (hoveredPos === null) return DecorationSet.empty;
+        console.log("received the para" , hoveredPos)
+
+        try {
+          const $pos = state.doc.resolve(hoveredPos);
+          let depth = $pos.depth;
+          
+          while (depth > 0) {
+            const node = $pos.node(depth);
+            if (node.type.name === 'paragraph') {
+              return DecorationSet.create(state.doc, [
+                Decoration.node($pos.before(depth), $pos.after(depth), {
+                  style: 'background-color: red'
+                })
+              ]);
+            }
+            depth--;
+          }
+        } catch (error) {
+          console.error('Error creating decoration:', error);
+        }
+        
+        return DecorationSet.empty;
+      }
+    },
+    onBeforeCreate: ({ editor }) => {
+      // Make editor instance available globally when created
+      window.editor = editor;
+    },
+    onDestroy: () => {
+      // Clean up global reference when editor is destroyed
+      window.editor = null;
+    }
   })
+
+  // Also set it when editor instance changes
+  useEffect(() => {
+    if (editor) {
+      window.editor = editor;
+      editor.setHoveredPos = setHoveredPos;
+    }
+    return () => {
+      window.editor = null;
+    };
+  }, [editor]);
 
   // Add this useEffect to update editable state when editMode changes
   useEffect(() => {
@@ -525,6 +573,37 @@ export const TipTapEditor = ({ editMode, initialContent, component }) => {
       document.body.removeChild(container)
     }
   }, [])
+
+  useEffect(() => {
+    if (!editor) return;
+
+    const handleMouseMove = (event) => {
+      const pos = editor.view.posAtCoords({
+        left: event.clientX,
+        top: event.clientY
+      });
+
+      if (pos) {
+        console.log(pos.pos)
+        setHoveredPos(pos.pos);
+      } else {
+        setHoveredPos(null);
+      }
+    };
+
+    const handleMouseLeave = () => {
+      setHoveredPos(null);
+    };
+
+    // const editorElement = editor.view.dom;
+    // editorElement.addEventListener('mousemove', handleMouseMove);
+    // editorElement.addEventListener('mouseleave', handleMouseLeave);
+
+    // return () => {
+    //   editorElement.removeEventListener('mousemove', handleMouseMove);
+    //   editorElement.removeEventListener('mouseleave', handleMouseLeave);
+    // };
+  }, [editor]);
 
   // Don't render until client-side
   if (!isMounted) {
