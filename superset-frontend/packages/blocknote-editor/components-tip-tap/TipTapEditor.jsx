@@ -34,7 +34,7 @@ import { customEmojiStorage } from '../utils/customEmojiStorage'
 import { useDispatch } from 'react-redux'
 import { updateComponents } from 'src/dashboard/actions/dashboardLayout'
 import { debounce } from 'lodash'
-import { Moon, Sun  } from 'lucide-react'
+import { Moon, Sun } from 'lucide-react'
 
 const EditorContainer = styled.div`
   background: ${props => props.$isDarkMode ? '#1A1B1E' : '#fff'};
@@ -130,7 +130,7 @@ const Button = styled.button`
   padding: 6px 12px;
   border: 1px solid ${props => props.$isDarkMode ? '#2D2D2D' : '#d1d5db'};
   border-radius: 6px;
-  background: ${props => props.$isDarkMode 
+  background: ${props => props.$isDarkMode
     ? props.$active ? '#3A3B3C' : '#242526'
     : props.$active ? '#e5e7eb' : '#ffffff'};
   color: ${props => props.$isDarkMode ? '#fff' : '#374151'};
@@ -296,8 +296,26 @@ const FullscreenContainer = styled.div`
   }
 `
 
+
+function isInChartTable(state) {
+  const { $anchor } = state.selection;
+  let depth = $anchor.depth;
+
+  // Traverse up the document until we find a table node
+  while (depth > 0) {
+    const node = $anchor.node(depth);
+    if (node.type.name === 'table') {
+      return node.attrs['data-is-chart-table'] === 'true';
+    }
+    depth--;
+  }
+  return false;
+};
+
 // Create custom table extension with attributes
 const CustomTable = Table.extend({
+
+
   addAttributes() {
     return {
       ...this.parent?.(),
@@ -343,6 +361,44 @@ const CustomTable = Table.extend({
           'data-is-chart-table': attributes['data-is-chart-table']
         })
       },
+      'data-locked-rows': {
+        default: null,
+        parseHTML: element => element.getAttribute('data-locked-rows'),
+        renderHTML: attributes => ({
+          'data-locked-rows': attributes['data-locked-rows']
+        })
+      }
+    }
+  },
+
+  // Helper function to check if current selection is in a chart table
+
+
+  // Override the addCommands method to prevent row operations on locked tables
+  addCommands() {
+    return {
+      ...this.parent?.(),
+      addRowBefore: () => ({ state, dispatch }) => {
+
+        if (isInChartTable(state)) {
+          return false;
+        }
+        return this.parent?.().addRowBefore()({ state, dispatch });
+      },
+      addRowAfter: () => ({ state, dispatch }) => {
+
+        if (isInChartTable(state)) {
+          return false;
+        }
+        return this.parent?.().addRowAfter()({ state, dispatch });
+      },
+      deleteRow: () => ({ state, dispatch }) => {
+
+        if (isInChartTable(state)) {
+          return false;
+        }
+        return this.parent?.().deleteRow()({ state, dispatch });
+      }
     }
   }
 })
@@ -353,11 +409,11 @@ export const TipTapEditor = ({ editMode, initialContent, component }) => {
   const [isDarkMode, setIsDarkMode] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false);
   const id = component?.id;
-  
+
   const dispatch = useDispatch();
 
   const updateEditorComponentMeta = (editorJsonContent) => {
-    if(component) {
+    if (component) {
       dispatch(
         updateComponents({
           [component?.id]: {
@@ -438,7 +494,7 @@ export const TipTapEditor = ({ editMode, initialContent, component }) => {
     ],
     editable: editMode,
     injectCSS: false,
-    content: component?.meta?.editorJson || initialContent, 
+    content: component?.meta?.editorJson || initialContent,
     onCreate() {
       setIsMounted(true)
     },
@@ -504,7 +560,7 @@ export const TipTapEditor = ({ editMode, initialContent, component }) => {
   // Function for inserting chart table with attributes
   const insertChartTable = () => {
     const tableId = Math.random().toString(36).substr(2, 9);
-    
+
     editor.chain()
       .focus()
       .insertContent({
@@ -515,30 +571,31 @@ export const TipTapEditor = ({ editMode, initialContent, component }) => {
           'data-created-at': new Date().toISOString(),
           'data-creator': 'user',
           'data-version': '1.0',
-          'data-is-chart-table': 'true'
+          'data-is-chart-table': 'true',
+          'data-locked-rows': 'true'
         },
         content: [{
           type: 'tableRow',
           content: [
             {
               type: 'tableCell',
-              content: [{ 
-                type: 'paragraph', 
-                content: [{ type: 'text', text: 'First Column' }] 
+              content: [{
+                type: 'paragraph',
+                content: [{ type: 'text', text: 'First Column' }]
               }]
             },
             {
               type: 'tableCell',
-              content: [{ 
-                type: 'paragraph', 
-                content: [{ type: 'text', text: 'Second Column' }] 
+              content: [{
+                type: 'paragraph',
+                content: [{ type: 'text', text: 'Second Column' }]
               }]
             },
             {
               type: 'tableCell',
-              content: [{ 
-                type: 'paragraph', 
-                content: [{ type: 'text', text: 'Third Column' }] 
+              content: [{
+                type: 'paragraph',
+                content: [{ type: 'text', text: 'Third Column' }]
               }]
             }
           ]
@@ -551,10 +608,10 @@ export const TipTapEditor = ({ editMode, initialContent, component }) => {
     try {
       // Add to storage
       const updatedEmojis = customEmojiStorage.add(newEmoji)
-      
+
       // Force editor to re-render emoji suggestions
       editor.commands.focus()
-      
+
       return updatedEmojis
     } catch (error) {
       console.error('Error adding custom emoji:', error)
@@ -570,15 +627,15 @@ export const TipTapEditor = ({ editMode, initialContent, component }) => {
   };
 
   return (
-    <EditorContainer 
-      className="editor-container" 
+    <EditorContainer
+      className="editor-container"
       data-editor-focused={editor?.isFocused}
       editMode={editMode}
       $isDarkMode={isDarkMode}
     >
       <ControlsContainer>
         <ToggleSwitch $isDarkMode={isDarkMode}>
-          <input 
+          <input
             type="checkbox"
             checked={isDarkMode}
             onChange={toggleTheme}
