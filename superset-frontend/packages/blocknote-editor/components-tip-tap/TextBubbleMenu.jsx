@@ -1,6 +1,7 @@
-import React from 'react'
+import React, { useRef, useState } from 'react'
 import { BubbleMenu } from '@tiptap/react'
 import styled from 'styled-components'
+import { MessageSquarePlus } from 'lucide-react'
 
 const MenuContainer = styled.div`
   display: flex;
@@ -34,6 +35,11 @@ const MenuButton = styled.button`
   &:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+  }
+
+  svg {
+    width: 16px;
+    height: 16px;
   }
 `
 
@@ -83,7 +89,10 @@ const FontSizeSelect = styled.select`
   }
 `
 
-export const TextBubbleMenu = ({ editor }) => {
+export const TextBubbleMenu = ({ editor, onAddComment }) => {
+  const commentButtonRef = useRef(null)
+  const [isAddingComment, setIsAddingComment] = useState(false)
+
   if (!editor) {
     return null
   }
@@ -102,6 +111,11 @@ export const TextBubbleMenu = ({ editor }) => {
   const getCurrentFontSize = () => {
     const attrs = editor.getAttributes('textStyle')
     return attrs.fontSize || '16px'
+  }
+
+  const handleCommentClick = () => {
+    setIsAddingComment(true)
+    onAddComment(editor.state.selection, commentButtonRef.current)
   }
 
   return (
@@ -169,6 +183,22 @@ export const TextBubbleMenu = ({ editor }) => {
           $active={editor.isActive('strike')}
         >
           S
+        </MenuButton>
+
+        <MenuButton
+          onClick={() => editor.chain().focus().toggleCode().run()}
+          $active={editor.isActive('code')}
+        >
+          {'</>'}
+        </MenuButton>
+
+        <MenuButton
+          ref={commentButtonRef}
+          onClick={handleCommentClick}
+          $active={editor.isActive('comment')}
+          title="Add comment"
+        >
+          <MessageSquarePlus size={16} />
         </MenuButton>
       </MenuContainer>
     </BubbleMenu>

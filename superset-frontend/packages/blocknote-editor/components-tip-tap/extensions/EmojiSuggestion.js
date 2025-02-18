@@ -9,7 +9,7 @@ import { customEmojiStorage } from '../../utils/customEmojiStorage'
 // Create a unique plugin key
 const suggestionPluginKey = new PluginKey('emojiSuggestion')
 
-const baseEmojiList = [
+export const baseEmojiList = [
   { name: 'smile', emoji: '😊' },
   { name: 'laugh', emoji: '😂' },
   { name: 'heart', emoji: '❤️' },
