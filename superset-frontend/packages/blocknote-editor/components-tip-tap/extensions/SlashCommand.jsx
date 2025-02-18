@@ -249,16 +249,7 @@ export const getSuggestionItems = ({ query }) => {
                     {
                       type: 'tableCell',
                       content: [
-                        { type: 'paragraph', content: [{ type: 'text', text: 'First Column' }] },
                         { type: 'paragraph', content: [] },
-                        { type: 'paragraph', content: [] },
-                        { type: 'paragraph', content: [] }
-                      ]
-                    },
-                    {
-                      type: 'tableCell',
-                      content: [
-                        { type: 'paragraph', content: [{ type: 'text', text: 'Second Column' }] },
                         { type: 'paragraph', content: [] },
                         { type: 'paragraph', content: [] },
                         { type: 'paragraph', content: [] }
@@ -267,7 +258,16 @@ export const getSuggestionItems = ({ query }) => {
                     {
                       type: 'tableCell',
                       content: [
-                        { type: 'paragraph', content: [{ type: 'text', text: 'Third Column' }] },
+                        { type: 'paragraph', content: [] },
+                        { type: 'paragraph', content: [] },
+                        { type: 'paragraph', content: [] },
+                        { type: 'paragraph', content: [] }
+                      ]
+                    },
+                    {
+                      type: 'tableCell',
+                      content: [
+                        { type: 'paragraph', content: [] },
                         { type: 'paragraph', content: [] },
                         { type: 'paragraph', content: [] },
                         { type: 'paragraph', content: [] }

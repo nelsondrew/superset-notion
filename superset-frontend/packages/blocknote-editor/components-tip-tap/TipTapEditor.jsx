@@ -93,15 +93,12 @@ const EditorContainer = styled.div`
       }
 
       &[data-is-chart-table="true"] {
-        border: 2px dotted #3b82f6 !important;
+        border: ${props => props.$editMode ? '2px dotted #3b82f6' : 'none'} !important;
         border-radius: 4px;
-        
-        td, th {
-          border-style: dotted;
-          border-color: #3b82f6;
-          border-width: 1px;
+        td {
+          border: none !important;
         }
-        
+
         th {
           background-color: ${props => props.$isDarkMode ? '#1e40af' : '#dbeafe'};
         }
@@ -636,7 +633,7 @@ export const TipTapEditor = ({ editMode, initialContent, component }) => {
     <EditorContainer
       className="editor-container"
       data-editor-focused={editor?.isFocused}
-      editMode={editMode}
+      $editMode={editMode}
       $isDarkMode={isDarkMode}
     >
       <ControlsContainer>
