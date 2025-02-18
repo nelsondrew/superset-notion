@@ -222,6 +222,63 @@ export const getSuggestionItems = ({ query }) => {
               .run()
           }
         },
+        {
+          title: 'Chart Table',
+          subtitle: 'Insert a table for charts',
+          command: ({ editor, range }) => {
+            const tableId = Math.random().toString(36).substr(2, 9);
+            
+            editor
+              .chain()
+              .focus()
+              .deleteRange(range)
+              .insertContent({
+                type: 'table',
+                attrs: {
+                  'data-table-id': tableId,
+                  'data-table-type': 'chart',
+                  'data-created-at': new Date().toISOString(),
+                  'data-creator': 'user',
+                  'data-version': '1.0',
+                  'data-is-chart-table': 'true',
+                  'data-locked-rows': 'true'
+                },
+                content: [{
+                  type: 'tableRow',
+                  content: [
+                    {
+                      type: 'tableCell',
+                      content: [
+                        { type: 'paragraph', content: [] },
+                        { type: 'paragraph', content: [] },
+                        { type: 'paragraph', content: [] },
+                        { type: 'paragraph', content: [] }
+                      ]
+                    },
+                    {
+                      type: 'tableCell',
+                      content: [
+                        { type: 'paragraph', content: [] },
+                        { type: 'paragraph', content: [] },
+                        { type: 'paragraph', content: [] },
+                        { type: 'paragraph', content: [] }
+                      ]
+                    },
+                    {
+                      type: 'tableCell',
+                      content: [
+                        { type: 'paragraph', content: [] },
+                        { type: 'paragraph', content: [] },
+                        { type: 'paragraph', content: [] },
+                        { type: 'paragraph', content: [] }
+                      ]
+                    }
+                  ]
+                }]
+              })
+              .run()
+          }
+        },
       ],
     },
     {
@@ -243,7 +300,7 @@ export const getSuggestionItems = ({ query }) => {
           }
         }
       ]
-    }
+    },
   ]
 
   if (typeof query === 'string' && query.length > 0) {

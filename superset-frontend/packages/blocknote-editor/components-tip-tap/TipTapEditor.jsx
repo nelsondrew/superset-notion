@@ -34,7 +34,9 @@ import { customEmojiStorage } from '../utils/customEmojiStorage'
 import { useDispatch } from 'react-redux'
 import { updateComponents } from 'src/dashboard/actions/dashboardLayout'
 import { debounce } from 'lodash'
-import { Moon, Sun  } from 'lucide-react'
+import { Moon, Sun } from 'lucide-react'
+import { Plugin } from 'prosemirror-state'
+import { Decoration, DecorationSet } from 'prosemirror-view'
 
 const EditorContainer = styled.div`
   background: ${props => props.$isDarkMode ? '#1A1B1E' : '#fff'};
@@ -81,14 +83,31 @@ const EditorContainer = styled.div`
       color: ${props => props.$isDarkMode ? '#fff' : '#f3f4f6'};
     }
 
+    
+
     table {
+      overflow: visible !important;
       td, th {
         border-color: ${props => props.$isDarkMode ? '#2D2D2D' : '#ced4da'};
         color: ${props => props.$isDarkMode ? '#fff' : 'inherit'};
-        }
+      }
 
       th {
         background-color: ${props => props.$isDarkMode ? '#2D2D2D' : '#f8f9fa'};
+      }
+    }
+
+    div.tableWrapper[data-is-chart-table="true"] {
+      border-radius: 4px;
+      padding: 8px;
+      margin: 8px 0;
+      
+      table {
+        border: ${props => props.$editMode ? '2px dashed blue' : 'none !important'};
+        
+        td, th {
+          border: none !important;
+        }
       }
     }
   }
@@ -114,7 +133,7 @@ const Button = styled.button`
   padding: 6px 12px;
   border: 1px solid ${props => props.$isDarkMode ? '#2D2D2D' : '#d1d5db'};
   border-radius: 6px;
-  background: ${props => props.$isDarkMode 
+  background: ${props => props.$isDarkMode
     ? props.$active ? '#3A3B3C' : '#242526'
     : props.$active ? '#e5e7eb' : '#ffffff'};
   color: ${props => props.$isDarkMode ? '#fff' : '#374151'};
@@ -280,17 +299,162 @@ const FullscreenContainer = styled.div`
   }
 `
 
+
+function isInChartTable(state) {
+  const { $anchor } = state.selection;
+  let depth = $anchor.depth;
+
+  // Traverse up the document until we find a table node
+  while (depth > 0) {
+    const node = $anchor.node(depth);
+    if (node.type.name === 'table') {
+      return node.attrs['data-is-chart-table'] === 'true';
+    }
+    depth--;
+  }
+  return false;
+};
+
+// Create custom table extension with attributes
+const CustomTable = Table.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      'data-table-id': {
+        default: null,
+        parseHTML: element => element.getAttribute('data-table-id'),
+        renderHTML: attributes => ({
+          'data-table-id': attributes['data-table-id']
+        })
+      },
+      'data-table-type': {
+        default: null,
+        parseHTML: element => element.getAttribute('data-table-type'),
+        renderHTML: attributes => ({
+          'data-table-type': attributes['data-table-type']
+        })
+      },
+      'data-created-at': {
+        default: null,
+        parseHTML: element => element.getAttribute('data-created-at'),
+        renderHTML: attributes => ({
+          'data-created-at': attributes['data-created-at']
+        })
+      },
+      'data-creator': {
+        default: null,
+        parseHTML: element => element.getAttribute('data-creator'),
+        renderHTML: attributes => ({
+          'data-creator': attributes['data-creator']
+        })
+      },
+      'data-version': {
+        default: null,
+        parseHTML: element => element.getAttribute('data-version'),
+        renderHTML: attributes => ({
+          'data-version': attributes['data-version']
+        })
+      },
+      'data-is-chart-table': {
+        default: null,
+        parseHTML: element => element.getAttribute('data-is-chart-table'),
+        renderHTML: attributes => ({
+          'data-is-chart-table': attributes['data-is-chart-table']
+        })
+      },
+      'data-locked-rows': {
+        default: null,
+        parseHTML: element => element.getAttribute('data-locked-rows'),
+        renderHTML: attributes => ({
+          'data-locked-rows': attributes['data-locked-rows']
+        })
+      }
+    }
+  },
+
+  // Add decorations to chart tables
+  addProseMirrorPlugins() {
+    const plugins = this.parent?.() || []
+    
+    return [
+      ...plugins,
+      new Plugin({
+        props: {
+          decorations: (state) => {
+            const { doc } = state
+            const decorations = []
+            
+            doc.descendants((node, pos) => {
+              if (node.type.name === 'table' && node.attrs['data-is-chart-table'] === 'true') {
+                let tablePos = pos;
+                node.forEach((child, offset) => {
+                  if (child.type.name === 'table') {
+                    tablePos = pos + offset;
+                  }
+                });
+                
+                decorations.push(
+                  Decoration.node(tablePos, tablePos + node.nodeSize, {
+                      'data-table-id': node.attrs['data-table-id'],
+                      'data-table-type': node.attrs['data-table-type'],
+                      'data-created-at': node.attrs['data-created-at'],
+                      'data-creator': node.attrs['data-creator'],
+                      'data-version': node.attrs['data-version'],
+                      'data-is-chart-table': 'true',
+                      'data-locked-rows': node.attrs['data-locked-rows']
+                 
+                  })
+                )
+              }
+            })
+            
+            return DecorationSet.create(doc, decorations)
+          }
+        }
+      })
+    ]
+  },
+
+  // Override the addCommands method to prevent row operations on locked tables
+  addCommands() {
+    return {
+      ...this.parent?.(),
+      addRowBefore: () => ({ state, dispatch }) => {
+
+        if (isInChartTable(state)) {
+          return false;
+        }
+        return this.parent?.().addRowBefore()({ state, dispatch });
+      },
+      addRowAfter: () => ({ state, dispatch }) => {
+
+        if (isInChartTable(state)) {
+          return false;
+        }
+        return this.parent?.().addRowAfter()({ state, dispatch });
+      },
+      deleteRow: () => ({ state, dispatch }) => {
+
+        if (isInChartTable(state)) {
+          return false;
+        }
+        return this.parent?.().deleteRow()({ state, dispatch });
+      }
+    }
+  }
+})
+
 export const TipTapEditor = ({ editMode, initialContent, component }) => {
   const [isMounted, setIsMounted] = useState(false)
   const [isEmojiModalOpen, setIsEmojiModalOpen] = useState(false)
   const [isDarkMode, setIsDarkMode] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false);
   const id = component?.id;
-  
+
   const dispatch = useDispatch();
 
   const updateEditorComponentMeta = (editorJsonContent) => {
-    if(component) {
+    if (component) {
       dispatch(
         updateComponents({
           [component?.id]: {
@@ -330,11 +494,11 @@ export const TipTapEditor = ({ editMode, initialContent, component }) => {
       }),
       Subscript,
       Superscript,
-      Table.configure({
+      CustomTable.configure({
         resizable: true,
         HTMLAttributes: {
           class: 'my-custom-table',
-        },
+        }
       }),
       TableCell,
       TableHeader,
@@ -371,7 +535,7 @@ export const TipTapEditor = ({ editMode, initialContent, component }) => {
     ],
     editable: editMode,
     injectCSS: false,
-    content: component?.meta?.editorJson || initialContent, 
+    content: component?.meta?.editorJson || initialContent,
     onCreate() {
       setIsMounted(true)
     },
@@ -410,18 +574,91 @@ export const TipTapEditor = ({ editMode, initialContent, component }) => {
     return null;
   }
 
-  const insertTable = () => {
-    editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()
-  }
+  // Function for inserting normal table without attributes
+  const insertNormalTable = () => {
+    editor.chain()
+      .focus()
+      .insertContent({
+        type: 'table',
+        content: [{
+          type: 'tableRow',
+          content: Array(3).fill({
+            type: 'tableHeader',
+            content: [{ type: 'paragraph' }]
+          })
+        },
+        ...Array(2).fill({
+          type: 'tableRow',
+          content: Array(3).fill({
+            type: 'tableCell',
+            content: [{ type: 'paragraph' }]
+          })
+        })]
+      })
+      .run();
+  };
+
+  // Function for inserting chart table with attributes
+  const insertChartTable = () => {
+    const tableId = Math.random().toString(36).substr(2, 9);
+
+    editor.chain()
+      .focus()
+      .insertContent({
+        type: 'table',
+        attrs: {
+          'data-table-id': tableId,
+          'data-table-type': 'chart',
+          'data-created-at': new Date().toISOString(),
+          'data-creator': 'user',
+          'data-version': '1.0',
+          'data-is-chart-table': 'true',
+          'data-locked-rows': 'true'
+        },
+        content: [{
+          type: 'tableRow',
+          content: [
+            {
+              type: 'tableCell',
+              content: [
+                { type: 'paragraph', content: [] },
+                { type: 'paragraph', content: [] },
+                { type: 'paragraph', content: [] },
+                { type: 'paragraph', content: [] }
+              ]
+            },
+            {
+              type: 'tableCell',
+              content: [
+                { type: 'paragraph', content: [] },
+                { type: 'paragraph', content: [] },
+                { type: 'paragraph', content: [] },
+                { type: 'paragraph', content: [] }
+              ]
+            },
+            {
+              type: 'tableCell',
+              content: [
+                { type: 'paragraph', content: [] },
+                { type: 'paragraph', content: [] },
+                { type: 'paragraph', content: [] },
+                { type: 'paragraph', content: [] }
+              ]
+            }
+          ]
+        }]
+      })
+      .run();
+  };
 
   const handleCustomEmojiAdded = async (newEmoji) => {
     try {
       // Add to storage
       const updatedEmojis = customEmojiStorage.add(newEmoji)
-      
+
       // Force editor to re-render emoji suggestions
       editor.commands.focus()
-      
+
       return updatedEmojis
     } catch (error) {
       console.error('Error adding custom emoji:', error)
@@ -437,15 +674,15 @@ export const TipTapEditor = ({ editMode, initialContent, component }) => {
   };
 
   return (
-    <EditorContainer 
-      className="editor-container" 
+    <EditorContainer
+      className="editor-container"
       data-editor-focused={editor?.isFocused}
-      editMode={editMode}
+      $editMode={editMode}
       $isDarkMode={isDarkMode}
     >
       <ControlsContainer>
         <ToggleSwitch $isDarkMode={isDarkMode}>
-          <input 
+          <input
             type="checkbox"
             checked={isDarkMode}
             onChange={toggleTheme}
@@ -546,11 +783,18 @@ export const TipTapEditor = ({ editMode, initialContent, component }) => {
         </Button>
         <div className="table-buttons">
           <Button
-            onClick={insertTable}
-            title="Insert Table"
+            onClick={insertNormalTable}
+            title="Insert Normal Table"
             $isDarkMode={isDarkMode}
           >
             Insert Table
+          </Button>
+          <Button
+            onClick={insertChartTable}
+            title="Insert Chart Table"
+            $isDarkMode={isDarkMode}
+          >
+            Insert Chart Table
           </Button>
           <Button
             onClick={() => editor.chain().focus().addColumnBefore().run()}
