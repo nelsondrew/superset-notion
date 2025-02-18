@@ -579,24 +579,30 @@ export const TipTapEditor = ({ editMode, initialContent, component }) => {
           content: [
             {
               type: 'tableCell',
-              content: [{
-                type: 'paragraph',
-                content: [{ type: 'text', text: 'First Column' }]
-              }]
+              content: [
+                { type: 'paragraph', content: [] },
+                { type: 'paragraph', content: [] },
+                { type: 'paragraph', content: [] },
+                { type: 'paragraph', content: [] }
+              ]
             },
             {
               type: 'tableCell',
-              content: [{
-                type: 'paragraph',
-                content: [{ type: 'text', text: 'Second Column' }]
-              }]
+              content: [
+                { type: 'paragraph', content: [] },
+                { type: 'paragraph', content: [] },
+                { type: 'paragraph', content: [] },
+                { type: 'paragraph', content: [] }
+              ]
             },
             {
               type: 'tableCell',
-              content: [{
-                type: 'paragraph',
-                content: [{ type: 'text', text: 'Third Column' }]
-              }]
+              content: [
+                { type: 'paragraph', content: [] },
+                { type: 'paragraph', content: [] },
+                { type: 'paragraph', content: [] },
+                { type: 'paragraph', content: [] }
+              ]
             }
           ]
         }]
