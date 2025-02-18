@@ -82,13 +82,29 @@ const EditorContainer = styled.div`
     }
 
     table {
+      overflow: visible !important;
       td, th {
         border-color: ${props => props.$isDarkMode ? '#2D2D2D' : '#ced4da'};
         color: ${props => props.$isDarkMode ? '#fff' : 'inherit'};
-        }
+      }
 
       th {
         background-color: ${props => props.$isDarkMode ? '#2D2D2D' : '#f8f9fa'};
+      }
+
+      &[data-is-chart-table="true"] {
+        border: 2px dotted #3b82f6 !important;
+        border-radius: 4px;
+        
+        td, th {
+          border-style: dotted;
+          border-color: #3b82f6;
+          border-width: 1px;
+        }
+        
+        th {
+          background-color: ${props => props.$isDarkMode ? '#1e40af' : '#dbeafe'};
+        }
       }
     }
   }
@@ -319,7 +335,14 @@ const CustomTable = Table.extend({
         renderHTML: attributes => ({
           'data-version': attributes['data-version']
         })
-      }
+      },
+      'data-is-chart-table': {
+        default: null,
+        parseHTML: element => element.getAttribute('data-is-chart-table'),
+        renderHTML: attributes => ({
+          'data-is-chart-table': attributes['data-is-chart-table']
+        })
+      },
     }
   }
 })
@@ -491,22 +514,35 @@ export const TipTapEditor = ({ editMode, initialContent, component }) => {
           'data-table-type': 'chart',
           'data-created-at': new Date().toISOString(),
           'data-creator': 'user',
-          'data-version': '1.0'
+          'data-version': '1.0',
+          'data-is-chart-table': 'true'
         },
         content: [{
           type: 'tableRow',
-          content: Array(3).fill({
-            type: 'tableHeader',
-            content: [{ type: 'paragraph' }]
-          })
-        },
-        ...Array(2).fill({
-          type: 'tableRow',
-          content: Array(3).fill({
-            type: 'tableCell',
-            content: [{ type: 'paragraph' }]
-          })
-        })]
+          content: [
+            {
+              type: 'tableCell',
+              content: [{ 
+                type: 'paragraph', 
+                content: [{ type: 'text', text: 'First Column' }] 
+              }]
+            },
+            {
+              type: 'tableCell',
+              content: [{ 
+                type: 'paragraph', 
+                content: [{ type: 'text', text: 'Second Column' }] 
+              }]
+            },
+            {
+              type: 'tableCell',
+              content: [{ 
+                type: 'paragraph', 
+                content: [{ type: 'text', text: 'Third Column' }] 
+              }]
+            }
+          ]
+        }]
       })
       .run();
   };
