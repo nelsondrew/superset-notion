@@ -238,6 +238,7 @@ export const hydrateDashboard =
       );
     metadata.chart_configuration = chartConfiguration;
     metadata.global_chart_configuration = globalChartConfiguration;
+    metadata.pagesData = metadata?.pagesData || {};
 
     const { roles } = user;
     const canEdit = canUserEditDashboard(dashboard, user);

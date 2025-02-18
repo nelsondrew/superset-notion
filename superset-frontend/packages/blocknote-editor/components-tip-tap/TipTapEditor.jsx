@@ -43,6 +43,9 @@ import { CommentsThread } from './CommentsThread'
 import { v4 as uuidv4 } from 'uuid'
 import { createPortal } from 'react-dom'
 import { DecorationSet, Decoration } from 'prosemirror-view'
+import { Extension } from '@tiptap/core'
+import { Heading } from '@tiptap/extension-heading'
+import { Plugin } from 'prosemirror-state'
 
 const EditorContainer = styled.div`
   background: ${props => props.$isDarkMode ? '#1A1B1E' : '#fff'};
@@ -176,6 +179,7 @@ const ToggleSwitch = styled.label`
   background: #E4E6EB;
   border-radius: 50px;
   cursor: pointer;
+  margin-top: 3rem;
   padding: 4px;
   border: ${props => props.$isDarkMode ? '1px solid white' : ''};
 
@@ -312,7 +316,32 @@ const PopoverContainer = styled.div`
   }
 `
 
-export const TipTapEditor = ({ editMode, initialContent, component  , hoveredPos , setHoveredPos }) => {
+// Create custom heading extension
+const CustomHeading = Heading.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      level: {
+        default: 1,
+        rendered: true
+      },
+      id: {
+        default: null,
+        parseHTML: element => element.getAttribute('id'),
+        renderHTML: attributes => {
+          if (!attributes.id) {
+            const headerId = `heading-${uuidv4()}`
+            attributes.id = headerId
+            return { id: headerId }
+          }
+          return { id: attributes.id }
+        }
+      }
+    }
+  }
+})
+
+export const TipTapEditor = ({ editMode, initialContent, component  , hoveredPos , setHoveredPos, setHeadings }) => {
   const [isMounted, setIsMounted] = useState(false)
   const [isEmojiModalOpen, setIsEmojiModalOpen] = useState(false)
   const [isDarkMode, setIsDarkMode] = useState(false)
@@ -350,10 +379,10 @@ export const TipTapEditor = ({ editMode, initialContent, component  , hoveredPos
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
-        heading: {
-          levels: [1, 2]
-        },
-        typography: false,
+        heading: false,
+      }),
+      CustomHeading.configure({
+        levels: [1, 2]
       }),
       Color,
       FontFamily,
@@ -418,7 +447,28 @@ export const TipTapEditor = ({ editMode, initialContent, component  , hoveredPos
       setIsMounted(true)
     },
     onUpdate: ({ editor }) => {
-      debounceUpdateEditorComponent(editor.getJSON())
+      const content = editor.getJSON()
+      
+      // Get all current heading IDs
+      const currentHeadingIds = []
+      const findHeadingIds = (node) => {
+        if (node.type === 'heading' && node.attrs?.id) {
+          currentHeadingIds.push(node.attrs.id)
+        }
+        if (node.content) {
+          node.content.forEach(findHeadingIds)
+        }
+      }
+      findHeadingIds(content)
+
+      // Update headings state with only existing IDs
+      setHeadings(prevHeadings => {
+        if (!prevHeadings) return currentHeadingIds
+        return prevHeadings.filter(id => currentHeadingIds.includes(id))
+      })
+
+      // Your existing debounced update
+      debounceUpdateEditorComponent(content)
     },
     onFocus: () => {
       // When editor is focused, set data attribute on parent
@@ -459,7 +509,8 @@ export const TipTapEditor = ({ editMode, initialContent, component  , hoveredPos
         }
         
         return DecorationSet.empty;
-      }
+      },
+      setHeadings
     },
     onBeforeCreate: ({ editor }) => {
       // Make editor instance available globally when created
@@ -749,14 +800,28 @@ export const TipTapEditor = ({ editMode, initialContent, component  , hoveredPos
           Paragraph
         </Button>
         <Button
-          onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
+          onClick={() => {
+            const headerId = `heading-${uuidv4()}`
+            editor.chain().focus().toggleHeading({ 
+              level: 1,
+              id: headerId
+            }).run()
+            setHeadings((prevHeadings) => [...(prevHeadings || []), headerId])
+          }}
           active={editor.isActive('heading', { level: 1 })}
           $isDarkMode={isDarkMode}
         >
           H1
         </Button>
         <Button
-          onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+          onClick={() => {
+            const headerId = `heading-${uuidv4()}`
+            editor.chain().focus().toggleHeading({ 
+              level: 2,
+              id: headerId
+            }).run()
+            setHeadings((prevHeadings) => [...(prevHeadings || []), headerId])
+          }}
           active={editor.isActive('heading', { level: 2 })}
           $isDarkMode={isDarkMode}
         >
