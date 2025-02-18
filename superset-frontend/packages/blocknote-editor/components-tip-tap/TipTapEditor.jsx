@@ -9,10 +9,6 @@ import Link from '@tiptap/extension-link'
 import Placeholder from '@tiptap/extension-placeholder'
 import Subscript from '@tiptap/extension-subscript'
 import Superscript from '@tiptap/extension-superscript'
-import Table from '@tiptap/extension-table'
-import TableCell from '@tiptap/extension-table-cell'
-import TableHeader from '@tiptap/extension-table-header'
-import TableRow from '@tiptap/extension-table-row'
 import TaskItem from '@tiptap/extension-task-item'
 import TaskList from '@tiptap/extension-task-list'
 import TextAlign from '@tiptap/extension-text-align'
@@ -35,6 +31,7 @@ import { useDispatch } from 'react-redux'
 import { updateComponents } from 'src/dashboard/actions/dashboardLayout'
 import { debounce } from 'lodash'
 import { Moon, Sun  } from 'lucide-react'
+import { chartTableExtensions, insertChartTable } from './extensions/ChartTable'
 
 const EditorContainer = styled.div`
   background: ${props => props.$isDarkMode ? '#1A1B1E' : '#fff'};
@@ -314,6 +311,7 @@ export const TipTapEditor = ({ editMode, initialContent, component }) => {
           levels: [1, 2]
         },
         typography: false,
+        table: false,
       }),
       Color,
       FontFamily,
@@ -330,15 +328,6 @@ export const TipTapEditor = ({ editMode, initialContent, component }) => {
       }),
       Subscript,
       Superscript,
-      Table.configure({
-        resizable: true,
-        HTMLAttributes: {
-          class: 'my-custom-table',
-        },
-      }),
-      TableCell,
-      TableHeader,
-      TableRow,
       TaskItem.configure({
         nested: true,
       }),
@@ -368,6 +357,7 @@ export const TipTapEditor = ({ editMode, initialContent, component }) => {
       }),
       CustomEmoji,
       EmojiSuggestion,
+      ...chartTableExtensions,
     ],
     editable: editMode,
     injectCSS: false,
@@ -604,6 +594,12 @@ export const TipTapEditor = ({ editMode, initialContent, component }) => {
         </div>
         <Button onClick={() => setIsEmojiModalOpen(true)}>
           Add Emoji
+        </Button>
+        <Button
+          onClick={() => insertChartTable()(editor)}
+          $isDarkMode={isDarkMode}
+        >
+          Insert Chart Table
         </Button>
       </MenuBar>
       {editor && <TextBubbleMenu editor={editor} />}
