@@ -35,6 +35,8 @@ import { useDispatch } from 'react-redux'
 import { updateComponents } from 'src/dashboard/actions/dashboardLayout'
 import { debounce } from 'lodash'
 import { Moon, Sun } from 'lucide-react'
+import { Plugin } from 'prosemirror-state'
+import { Decoration, DecorationSet } from 'prosemirror-view'
 
 const EditorContainer = styled.div`
   background: ${props => props.$isDarkMode ? '#1A1B1E' : '#fff'};
@@ -81,6 +83,8 @@ const EditorContainer = styled.div`
       color: ${props => props.$isDarkMode ? '#fff' : '#f3f4f6'};
     }
 
+    
+
     table {
       overflow: visible !important;
       td, th {
@@ -91,16 +95,18 @@ const EditorContainer = styled.div`
       th {
         background-color: ${props => props.$isDarkMode ? '#2D2D2D' : '#f8f9fa'};
       }
+    }
 
-      &[data-is-chart-table="true"] {
-        border: ${props => props.$editMode ? '2px dotted #3b82f6' : 'none'} !important;
-        border-radius: 4px;
-        td {
+    div.tableWrapper[data-is-chart-table="true"] {
+      border-radius: 4px;
+      padding: 8px;
+      margin: 8px 0;
+      
+      table {
+        border: ${props => props.$editMode ? '2px dashed blue' : 'none !important'};
+        
+        td, th {
           border: none !important;
-        }
-
-        th {
-          background-color: ${props => props.$isDarkMode ? '#1e40af' : '#dbeafe'};
         }
       }
     }
@@ -311,8 +317,6 @@ function isInChartTable(state) {
 
 // Create custom table extension with attributes
 const CustomTable = Table.extend({
-
-
   addAttributes() {
     return {
       ...this.parent?.(),
@@ -368,8 +372,48 @@ const CustomTable = Table.extend({
     }
   },
 
-  // Helper function to check if current selection is in a chart table
-
+  // Add decorations to chart tables
+  addProseMirrorPlugins() {
+    const plugins = this.parent?.() || []
+    
+    return [
+      ...plugins,
+      new Plugin({
+        props: {
+          decorations: (state) => {
+            const { doc } = state
+            const decorations = []
+            
+            doc.descendants((node, pos) => {
+              if (node.type.name === 'table' && node.attrs['data-is-chart-table'] === 'true') {
+                let tablePos = pos;
+                node.forEach((child, offset) => {
+                  if (child.type.name === 'table') {
+                    tablePos = pos + offset;
+                  }
+                });
+                
+                decorations.push(
+                  Decoration.node(tablePos, tablePos + node.nodeSize, {
+                      'data-table-id': node.attrs['data-table-id'],
+                      'data-table-type': node.attrs['data-table-type'],
+                      'data-created-at': node.attrs['data-created-at'],
+                      'data-creator': node.attrs['data-creator'],
+                      'data-version': node.attrs['data-version'],
+                      'data-is-chart-table': 'true',
+                      'data-locked-rows': node.attrs['data-locked-rows']
+                 
+                  })
+                )
+              }
+            })
+            
+            return DecorationSet.create(doc, decorations)
+          }
+        }
+      })
+    ]
+  },
 
   // Override the addCommands method to prevent row operations on locked tables
   addCommands() {
