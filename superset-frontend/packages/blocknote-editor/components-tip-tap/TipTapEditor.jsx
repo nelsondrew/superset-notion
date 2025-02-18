@@ -280,6 +280,50 @@ const FullscreenContainer = styled.div`
   }
 `
 
+// Create custom table extension with attributes
+const CustomTable = Table.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      'data-table-id': {
+        default: null,
+        parseHTML: element => element.getAttribute('data-table-id'),
+        renderHTML: attributes => ({
+          'data-table-id': attributes['data-table-id']
+        })
+      },
+      'data-table-type': {
+        default: null,
+        parseHTML: element => element.getAttribute('data-table-type'),
+        renderHTML: attributes => ({
+          'data-table-type': attributes['data-table-type']
+        })
+      },
+      'data-created-at': {
+        default: null,
+        parseHTML: element => element.getAttribute('data-created-at'),
+        renderHTML: attributes => ({
+          'data-created-at': attributes['data-created-at']
+        })
+      },
+      'data-creator': {
+        default: null,
+        parseHTML: element => element.getAttribute('data-creator'),
+        renderHTML: attributes => ({
+          'data-creator': attributes['data-creator']
+        })
+      },
+      'data-version': {
+        default: null,
+        parseHTML: element => element.getAttribute('data-version'),
+        renderHTML: attributes => ({
+          'data-version': attributes['data-version']
+        })
+      }
+    }
+  }
+})
+
 export const TipTapEditor = ({ editMode, initialContent, component }) => {
   const [isMounted, setIsMounted] = useState(false)
   const [isEmojiModalOpen, setIsEmojiModalOpen] = useState(false)
@@ -330,11 +374,11 @@ export const TipTapEditor = ({ editMode, initialContent, component }) => {
       }),
       Subscript,
       Superscript,
-      Table.configure({
+      CustomTable.configure({
         resizable: true,
         HTMLAttributes: {
           class: 'my-custom-table',
-        },
+        }
       }),
       TableCell,
       TableHeader,
@@ -410,9 +454,62 @@ export const TipTapEditor = ({ editMode, initialContent, component }) => {
     return null;
   }
 
-  const insertTable = () => {
-    editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()
-  }
+  // Function for inserting normal table without attributes
+  const insertNormalTable = () => {
+    editor.chain()
+      .focus()
+      .insertContent({
+        type: 'table',
+        content: [{
+          type: 'tableRow',
+          content: Array(3).fill({
+            type: 'tableHeader',
+            content: [{ type: 'paragraph' }]
+          })
+        },
+        ...Array(2).fill({
+          type: 'tableRow',
+          content: Array(3).fill({
+            type: 'tableCell',
+            content: [{ type: 'paragraph' }]
+          })
+        })]
+      })
+      .run();
+  };
+
+  // Function for inserting chart table with attributes
+  const insertChartTable = () => {
+    const tableId = Math.random().toString(36).substr(2, 9);
+    
+    editor.chain()
+      .focus()
+      .insertContent({
+        type: 'table',
+        attrs: {
+          'data-table-id': tableId,
+          'data-table-type': 'chart',
+          'data-created-at': new Date().toISOString(),
+          'data-creator': 'user',
+          'data-version': '1.0'
+        },
+        content: [{
+          type: 'tableRow',
+          content: Array(3).fill({
+            type: 'tableHeader',
+            content: [{ type: 'paragraph' }]
+          })
+        },
+        ...Array(2).fill({
+          type: 'tableRow',
+          content: Array(3).fill({
+            type: 'tableCell',
+            content: [{ type: 'paragraph' }]
+          })
+        })]
+      })
+      .run();
+  };
 
   const handleCustomEmojiAdded = async (newEmoji) => {
     try {
@@ -546,11 +643,18 @@ export const TipTapEditor = ({ editMode, initialContent, component }) => {
         </Button>
         <div className="table-buttons">
           <Button
-            onClick={insertTable}
-            title="Insert Table"
+            onClick={insertNormalTable}
+            title="Insert Normal Table"
             $isDarkMode={isDarkMode}
           >
             Insert Table
+          </Button>
+          <Button
+            onClick={insertChartTable}
+            title="Insert Chart Table"
+            $isDarkMode={isDarkMode}
+          >
+            Insert Chart Table
           </Button>
           <Button
             onClick={() => editor.chain().focus().addColumnBefore().run()}
