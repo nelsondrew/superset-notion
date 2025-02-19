@@ -16,9 +16,9 @@ interface TableOfContentsProps {
 
 const TOCContent = styled.div`
   padding: 32px 24px;
-  background: ${({ theme }) => theme.colors.grayscale.light5};
+  background: #F8FAFC;
   border-radius: 8px;
-  box-shadow: 0 0 0 1px ${({ theme }) => theme.colors.grayscale.light2};
+  box-shadow: 0 0 0 1px #E2E8F0;
   min-height: 100%;
 `;
 
@@ -28,19 +28,19 @@ const TOCHeader = styled.div`
   gap: 12px;
   margin-bottom: 32px;
   padding-bottom: 16px;
-  border-bottom: 2px solid ${({ theme }) => theme.colors.grayscale.light2};
+  border-bottom: 2px solid #E2E8F0;
   flex-shrink: 0;
 
   h2 {
     font-size: 20px;
     font-weight: 600;
-    color: ${({ theme }) => theme.colors.grayscale.dark1};
+    color: #1E293B;
     margin: 0;
     font-family: serif;
   }
 
   svg {
-    color: ${({ theme }) => theme.colors.primary.base};
+    color: #2563EB;
   }
 `;
 
@@ -54,8 +54,7 @@ const TOCList = styled.div`
 const StyledTOCItem = styled.div<{ depth: number; isActive?: boolean }>`
   padding: 8px 12px 8px ${({ depth }) => depth * 20 + 12}px;
   font-size: 14px;
-  color: ${({ theme, isActive }) =>
-    isActive ? theme.colors.primary.base : theme.colors.grayscale.dark1};
+  color: ${({ isActive }) => isActive ? '#2563EB' : '#334155'};
   cursor: pointer;
   transition: all 0.2s ease;
   border-radius: 6px;
@@ -79,26 +78,26 @@ const StyledTOCItem = styled.div<{ depth: number; isActive?: boolean }>`
     // Dotted line
     .dots {
       flex: 1;
-      border-bottom: 2px dotted ${({ theme }) => theme.colors.grayscale.light2};
+      border-bottom: 2px dotted #E2E8F0;
       margin: 0 8px;
       height: 1em;
     }
   }
   
   &:hover {
-    color: ${({ theme }) => theme.colors.primary.base};
+    color: #2563EB;
     
     .dots {
-      border-bottom-color: ${({ theme }) => rgba(theme.colors.primary.base, 0.3)};
+      border-bottom-color: ${rgba('#2563EB', 0.3)};
     }
   }
 
-  ${({ isActive, theme }) => isActive && `
-    background: ${rgba(theme.colors.primary.base, 0.08)};
+  ${({ isActive }) => isActive && `
+    background: ${rgba('#2563EB', 0.08)};
     font-weight: 500;
     
     .dots {
-      border-bottom-color: ${rgba(theme.colors.primary.base, 0.3)};
+      border-bottom-color: ${rgba('#2563EB', 0.3)};
     }
   `}
 
@@ -136,7 +135,7 @@ const TOCContainer = styled.div`
   position: absolute;
   height: 100%;
   width: ${TOC_PANE_WIDTH}px;
-  background-color: ${({ theme }) => theme.colors.grayscale.light5};
+  background-color: #F8FAFC;
   right: 0;
   padding: 16px;
   overflow-y: auto;
@@ -146,7 +145,7 @@ const TOCContainer = styled.div`
   }
   
   &::-webkit-scrollbar-thumb {
-    background: ${({ theme }) => theme.colors.grayscale.light3};
+    background: #CBD5E1;
     border-radius: 3px;
   }
   
