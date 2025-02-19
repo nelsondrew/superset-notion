@@ -46,6 +46,7 @@ import { DecorationSet, Decoration } from 'prosemirror-view'
 import { Extension } from '@tiptap/core'
 import { Heading } from '@tiptap/extension-heading'
 import { Plugin } from 'prosemirror-state'
+import { UniqueHeadingExtension } from './extensions/UniqueHeadingExtension'
 
 const EditorContainer = styled.div`
   background: ${props => props.$isDarkMode ? '#1A1B1E' : '#fff'};
@@ -315,7 +316,6 @@ const PopoverContainer = styled.div`
     pointer-events: auto;
   }
 `
-
 // Create custom heading extension
 const CustomHeading = Heading.extend({
   addAttributes() {
@@ -380,6 +380,9 @@ export const TipTapEditor = ({ editMode, initialContent, component  , hoveredPos
     extensions: [
       StarterKit.configure({
         heading: false,
+      }),
+      UniqueHeadingExtension.configure({
+        setHeadings: setHeadings,
       }),
       CustomHeading.configure({
         levels: [1, 2]
@@ -625,36 +628,23 @@ export const TipTapEditor = ({ editMode, initialContent, component  , hoveredPos
     }
   }, [])
 
+  // Add this useEffect after other useEffects
   useEffect(() => {
-    if (!editor) return;
-
-    const handleMouseMove = (event) => {
-      const pos = editor.view.posAtCoords({
-        left: event.clientX,
-        top: event.clientY
-      });
-
-      if (pos) {
-        console.log(pos.pos)
-        setHoveredPos(pos.pos);
-      } else {
-        setHoveredPos(null);
+    const handleNewHeadings = (event) => {
+      const { headingIds } = event.detail;
+      if (headingIds && headingIds.length > 0) {
+        setHeadings(prevHeadings => [...(prevHeadings || []), ...headingIds]);
       }
     };
 
-    const handleMouseLeave = () => {
-      setHoveredPos(null);
+    // Add event listener
+    window.addEventListener('newHeadingsCreated', handleNewHeadings);
+
+    // Cleanup
+    return () => {
+      window.removeEventListener('newHeadingsCreated', handleNewHeadings);
     };
-
-    // const editorElement = editor.view.dom;
-    // editorElement.addEventListener('mousemove', handleMouseMove);
-    // editorElement.addEventListener('mouseleave', handleMouseLeave);
-
-    // return () => {
-    //   editorElement.removeEventListener('mousemove', handleMouseMove);
-    //   editorElement.removeEventListener('mouseleave', handleMouseLeave);
-    // };
-  }, [editor]);
+  }, [setHeadings]);
 
   // Don't render until client-side
   if (!isMounted) {

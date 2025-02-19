@@ -171,7 +171,7 @@ const getOrderedHeadings = (pagesData: Record<string, { index: number; headings:
     .flatMap(([, { headings }]) => headings)
     .map(id => {
       const element = document.getElementById(id);
-      if (!element) return null;
+      if (!element || !element.innerHTML) return null;
       
       return {
         id,
