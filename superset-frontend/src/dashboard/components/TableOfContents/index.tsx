@@ -3,10 +3,12 @@ import { css, SupersetTheme, t } from '@superset-ui/core';
 import styled from '@emotion/styled';
 import { List, FileText } from 'lucide-react';
 import { useSelector } from 'react-redux';
-import { useEffect, useLayoutEffect, useState } from 'react';
-import { isNull } from 'lodash';
+import { useEffect, useLayoutEffect, useState, useCallback, useMemo, memo } from 'react';
+import { isNull, throttle } from 'lodash';
 
 const TOC_PANE_WIDTH = 374;
+const SCROLL_THROTTLE_TIME = 100;
+const HEADING_OFFSET = 20;
 
 interface TableOfContentsProps {
   topOffset?: number;
@@ -14,6 +16,10 @@ interface TableOfContentsProps {
 
 const TOCContent = styled.div`
   padding: 32px 24px;
+  background: ${({ theme }) => theme.colors.grayscale.light5};
+  border-radius: 8px;
+  box-shadow: 0 0 0 1px ${({ theme }) => theme.colors.grayscale.light2};
+  min-height: 100%;
 `;
 
 const TOCHeader = styled.div`
@@ -22,13 +28,15 @@ const TOCHeader = styled.div`
   gap: 12px;
   margin-bottom: 32px;
   padding-bottom: 16px;
-  border-bottom: 1px solid ${({ theme }) => theme.colors.grayscale.light2};
+  border-bottom: 2px solid ${({ theme }) => theme.colors.grayscale.light2};
+  flex-shrink: 0;
 
   h2 {
-    font-size: 18px;
+    font-size: 20px;
     font-weight: 600;
     color: ${({ theme }) => theme.colors.grayscale.dark1};
     margin: 0;
+    font-family: serif;
   }
 
   svg {
@@ -40,9 +48,10 @@ const TOCList = styled.div`
   display: flex;
   flex-direction: column;
   gap: 12px;
+  margin-top: 16px;
 `;
 
-const TOCItem = styled.div<{ depth: number; isActive?: boolean }>`
+const StyledTOCItem = styled.div<{ depth: number; isActive?: boolean }>`
   padding: 8px 12px 8px ${({ depth }) => depth * 20 + 12}px;
   font-size: 14px;
   color: ${({ theme, isActive }) =>
@@ -53,23 +62,75 @@ const TOCItem = styled.div<{ depth: number; isActive?: boolean }>`
   display: flex;
   align-items: center;
   gap: 8px;
+  width: 100%;
+  
+  // Container for title and dots
+  .title-container {
+    display: flex;
+    width: 100%;
+    align-items: baseline;
+    
+    // The actual title
+    .title {
+      white-space: nowrap;
+      margin-right: 8px;
+    }
+    
+    // Dotted line
+    .dots {
+      flex: 1;
+      border-bottom: 2px dotted ${({ theme }) => theme.colors.grayscale.light2};
+      margin: 0 8px;
+      height: 1em;
+    }
+  }
   
   &:hover {
     color: ${({ theme }) => theme.colors.primary.base};
-    background: ${({ theme }) => rgba(theme.colors.primary.base, 0.08)};
+    
+    .dots {
+      border-bottom-color: ${({ theme }) => rgba(theme.colors.primary.base, 0.3)};
+    }
   }
 
   ${({ isActive, theme }) => isActive && `
     background: ${rgba(theme.colors.primary.base, 0.08)};
     font-weight: 500;
+    
+    .dots {
+      border-bottom-color: ${rgba(theme.colors.primary.base, 0.3)};
+    }
   `}
 
   svg {
     width: 16px;
     height: 16px;
     opacity: ${({ depth }) => (depth === 0 ? 1 : 0.6)};
+    flex-shrink: 0;
   }
 `;
+
+const TOCItem = memo(({ 
+  item, 
+  isActive, 
+  onClick 
+}: { 
+  item: TOCItemData; 
+  isActive: boolean; 
+  onClick: (id: string) => void;
+}) => (
+  <StyledTOCItem
+    depth={item.depth}
+    isActive={isActive}
+    onClick={() => onClick(item.id)}
+  >
+    {item.depth === 0 && <FileText size={16} />}
+    <div className="title-container">
+      <span className="title">{item.title}</span>
+      <div className="dots" />
+    </div>
+  </StyledTOCItem>
+));
 
 const TOCContainer = styled.div`
   position: absolute;
@@ -77,8 +138,8 @@ const TOCContainer = styled.div`
   width: ${TOC_PANE_WIDTH}px;
   background-color: ${({ theme }) => theme.colors.grayscale.light5};
   right: 0;
+  padding: 16px;
   overflow-y: auto;
-  border-left: 1px solid ${({ theme }) => theme.colors.grayscale.light2};
   
   &::-webkit-scrollbar {
     width: 6px;
@@ -102,93 +163,103 @@ interface TOCItemData {
 }
 
 const getOrderedHeadings = (pagesData: Record<string, { index: number; headings: string[] }>) => {
-  const orderedHeadings = Object.values(pagesData).sort((a,b) => a.index - b.index).map(item => item.headings).flat() || [];
-  const orderedDomHeadings: HTMLElement[] = [];
+  if (!pagesData) return [];
   
-  orderedHeadings.forEach((item) => {
-    const element = document.getElementById(item);
-    if(!isNull(element)) {
-      orderedDomHeadings.push(element);
-    }
-  });
+  // Process all operations in a single pass
+  const orderedHeadings = Object.entries(pagesData)
+    .sort(([, a], [, b]) => a.index - b.index)
+    .flatMap(([, { headings }]) => headings)
+    .map(id => {
+      const element = document.getElementById(id);
+      if (!element) return null;
+      
+      return {
+        id,
+        title: element.innerHTML,
+        depth: element.tagName === 'H1' ? 0 : 1,
+      };
+    })
+    .filter(Boolean) as TOCItemData[];
 
-  const tocArray: TOCItemData[] = [];
-  
-  orderedDomHeadings.forEach((item) => {
-    const depth = item?.tagName === 'H1' ? 0 : 1;
-    const title = item?.innerHTML;
-    const id = item?.id;
-    tocArray.push({
-      id,
-      title,
-      depth
-    });
-  });
-  
-  return tocArray;
+  return orderedHeadings;
 };
 
-const TableOfContents = ({ topOffset = 0 }: TableOfContentsProps) => {
+const TableOfContents = memo(({ topOffset = 0 }: TableOfContentsProps) => {
   const pagesData = useSelector((state: any) => state?.dashboardInfo?.metadata?.pagesData);
   const [toc, setToc] = useState<TOCItemData[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
 
-  useEffect(() => {
-    const handleScroll = () => {
-      const headingElements = toc.map(item => document.getElementById(item.id)).filter(Boolean) as HTMLElement[];
+  const handleScroll = useCallback(
+    throttle(() => {
+      if (!toc.length) return;
+
+      const headingElements = toc
+        .map(item => document.getElementById(item.id))
+        .filter(Boolean) as HTMLElement[];
       
       const headingPositions = headingElements.map(element => ({
         id: element.id,
-        position: element.getBoundingClientRect().top - topOffset - 20
+        position: element.getBoundingClientRect().top - topOffset - HEADING_OFFSET
       }));
 
       const activeHeading = headingPositions.find(({ position }) => position >= 0) 
         || headingPositions[headingPositions.length - 1];
 
-      if (activeHeading && activeHeading.id !== activeId) {
-        setActiveId(activeHeading.id);
+      if (activeHeading?.id !== activeId) {
+        setActiveId(activeHeading?.id ?? null);
       }
-    };
+    }, SCROLL_THROTTLE_TIME),
+    [toc, topOffset, activeId]
+  );
 
-    window.addEventListener('scroll', handleScroll);
-    handleScroll();
-
-    return () => {
-      window.removeEventListener('scroll', handleScroll);
-    };
-  }, [toc, topOffset, activeId]);
-
-  const handleTOCItemClick = (id: string) => {
+  const handleTOCItemClick = useCallback((id: string) => {
     const element = document.getElementById(id);
     if (element) {
       const elementRect = element.getBoundingClientRect();
       const absoluteElementTop = elementRect.top + window.pageYOffset;
-      const scrollPosition = absoluteElementTop - topOffset - 20;
+      const scrollPosition = absoluteElementTop - topOffset - HEADING_OFFSET;
 
       window.scrollTo({
         top: scrollPosition,
         behavior: 'smooth'
       });
     }
-  };
+  }, [topOffset]);
 
   useLayoutEffect(() => {
-    setTimeout(() => {
+    if (!pagesData) return;
+    
+    const timeoutId = setTimeout(() => {
       const orderedHeadings = getOrderedHeadings(pagesData);
       setToc(orderedHeadings);
     }, 500);
+
+    return () => clearTimeout(timeoutId);
   }, [pagesData]);
 
+  useEffect(() => {
+    window.addEventListener('scroll', handleScroll);
+    handleScroll();
+
+    return () => {
+      handleScroll.cancel(); // Cancel any pending throttled calls
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, [handleScroll]);
+
+  const containerStyle = useMemo(() => css`
+    position: sticky;
+    right: 0;
+    top: ${topOffset}px;
+    height: calc(100vh - ${topOffset}px);
+    width: ${TOC_PANE_WIDTH}px;
+    overflow: hidden;
+  `, [topOffset]);
+
+  if (!toc.length) return null;
+
   return (
-    <div
-      css={css`
-        position: sticky;
-        right: 0;
-        top: ${topOffset}px;
-        height: calc(100vh - ${topOffset}px);
-        width: ${TOC_PANE_WIDTH}px;
-      `}
-    >
+    <div css={containerStyle}>
       <TOCContainer>
         <TOCContent>
           <TOCHeader>
@@ -199,19 +270,18 @@ const TableOfContents = ({ topOffset = 0 }: TableOfContentsProps) => {
             {toc.map(item => (
               <TOCItem
                 key={item.id}
-                depth={item.depth}
+                item={item}
                 isActive={activeId === item.id}
-                onClick={() => handleTOCItemClick(item.id)}
-              >
-                {item.depth === 0 && <FileText size={16} />}
-                {item.title}
-              </TOCItem>
+                onClick={handleTOCItemClick}
+              />
             ))}
           </TOCList>
         </TOCContent>
       </TOCContainer>
     </div>
   );
-};
+});
+
+TableOfContents.displayName = 'TableOfContents';
 
 export default TableOfContents;
