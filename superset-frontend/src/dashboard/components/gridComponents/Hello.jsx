@@ -7,7 +7,7 @@ import { CHART_TYPE, PORTABLE_CHART_TYPE } from '../../util/componentTypes';
 import BlockNoteEditor from "../../../../packages/blocknote-editor/index"
 import DeleteComponentButton from '../DeleteComponentButton';
 import { v4 as uuidv4 } from 'uuid';
-import { createComponent } from 'src/dashboard/actions/dashboardLayout';
+import { createComponent, updateComponents } from 'src/dashboard/actions/dashboardLayout';
 import { setDashboardMetadata } from 'src/dashboard/actions/dashboardState';
 import { isEmpty, isEqual } from 'lodash';
 
@@ -122,6 +122,7 @@ export default function Hello(props) {
 
   // Add selector to get latest dashboard layout
   const dashboardLayout = useSelector(state => state.dashboardLayout.present);
+ 
   const dashboardGridChildren = dashboardLayout['GRID_ID']?.children || [];
   const [headings, setHeadings] = useState([])
   const pagesData = useSelector((state) => state?.dashboardInfo?.metadata?.pagesData);
@@ -131,7 +132,7 @@ export default function Hello(props) {
     // self index in dashboard grid
     const selfIndex = dashboardGridChildren.findIndex(item => item === component?.id);
     if (!pagesData.hasOwnProperty(component?.id)) {
-      // it doesnt exist so create an object anyways
+  
       dispatch(
         setDashboardMetadata({
           pagesData: {
@@ -145,20 +146,19 @@ export default function Hello(props) {
       )
     } else {
       const currentHeadings = pagesData[component?.id]?.headings || [];
-      if (!isEqual(currentHeadings, headings)) {
-        // update the headings for the component
+
+      if (!isEqual(currentHeadings, headings) && headings.length > 0) {
         dispatch(
           setDashboardMetadata({
             pagesData: {
               ...pagesData,
               [`${component?.id}`]: {
-                ...pagesData[component?.id],
-                headings: headings
+                index: selfIndex,
+                headings,
               }
             }
           })
-        )
-      }
+        )}
     }
 
   }, [headings])
@@ -436,6 +436,7 @@ export default function Hello(props) {
         }
       })
     }
+   
 
     dispatch(
       setDashboardMetadata({
@@ -444,7 +445,6 @@ export default function Hello(props) {
     )
     deleteComponent(id, parentComponent.id);
     // remove the entry for the component
-    // reassign the indexes and update the metadata
     
   };
 

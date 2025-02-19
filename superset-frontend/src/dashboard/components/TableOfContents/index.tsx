@@ -2,6 +2,9 @@ import { rgba } from 'emotion-rgba';
 import { css, SupersetTheme, t } from '@superset-ui/core';
 import styled from '@emotion/styled';
 import { List, FileText } from 'lucide-react';
+import { useSelector } from 'react-redux';
+import { useEffect, useLayoutEffect, useState } from 'react';
+import { isNull } from 'lodash';
 
 const TOC_PANE_WIDTH = 374;
 
@@ -42,7 +45,7 @@ const TOCList = styled.div`
 const TOCItem = styled.div<{ depth: number; isActive?: boolean }>`
   padding: 8px 12px 8px ${({ depth }) => depth * 20 + 12}px;
   font-size: 14px;
-  color: ${({ theme, isActive }) => 
+  color: ${({ theme, isActive }) =>
     isActive ? theme.colors.primary.base : theme.colors.grayscale.dark1};
   cursor: pointer;
   transition: all 0.2s ease;
@@ -91,77 +94,124 @@ const TOCContainer = styled.div`
   }
 `;
 
-// Dummy data to match the image
-const dummyTOC = [
-  {
-    id: 1,
-    title: 'Text editor',
-    depth: 0,
-  },
-  {
-    id: 2,
-    title: 'Plain text and rich text',
-    depth: 1,
-  },
-  {
-    id: 3,
-    title: 'History',
-    depth: 1,
-  },
-  {
-    id: 4,
-    title: 'Weird h5 headline',
-    depth: 2,
-  },
-  {
-    id: 5,
-    title: 'Types of text editors',
-    depth: 0,
-    isActive: true,
-  },
-  {
-    id: 6,
-    title: 'Simple text editors',
-    depth: 1,
-  },
-  {
-    id: 7,
-    title: 'Word editors',
-    depth: 1,
-  },
-];
+interface TOCItemData {
+  id: string;
+  title: string;
+  depth: number;
+  isActive?: boolean;
+}
 
-const TableOfContents = ({ topOffset = 0 }: TableOfContentsProps) => (
-  <div
-    css={css`
-      position: sticky;
-      right: 0;
-      top: ${topOffset}px;
-      height: calc(100vh - ${topOffset}px);
-      width: ${TOC_PANE_WIDTH}px;
-    `}
-  >
-    <TOCContainer>
-      <TOCContent>
-        <TOCHeader>
-          <List size={20} />
-          <h2>{t('Table of contents')}</h2>
-        </TOCHeader>
-        <TOCList>
-          {dummyTOC.map(item => (
-            <TOCItem 
-              key={item.id} 
-              depth={item.depth}
-              isActive={item.isActive}
-            >
-              {item.depth === 0 && <FileText size={16} />}
-              {item.title}
-            </TOCItem>
-          ))}
-        </TOCList>
-      </TOCContent>
-    </TOCContainer>
-  </div>
-);
+const getOrderedHeadings = (pagesData: Record<string, { index: number; headings: string[] }>) => {
+  const orderedHeadings = Object.values(pagesData).sort((a,b) => a.index - b.index).map(item => item.headings).flat() || [];
+  const orderedDomHeadings: HTMLElement[] = [];
+  
+  orderedHeadings.forEach((item) => {
+    const element = document.getElementById(item);
+    if(!isNull(element)) {
+      orderedDomHeadings.push(element);
+    }
+  });
 
-export default TableOfContents; 
+  const tocArray: TOCItemData[] = [];
+  
+  orderedDomHeadings.forEach((item) => {
+    const depth = item?.tagName === 'H1' ? 0 : 1;
+    const title = item?.innerHTML;
+    const id = item?.id;
+    tocArray.push({
+      id,
+      title,
+      depth
+    });
+  });
+  
+  return tocArray;
+};
+
+const TableOfContents = ({ topOffset = 0 }: TableOfContentsProps) => {
+  const pagesData = useSelector((state: any) => state?.dashboardInfo?.metadata?.pagesData);
+  const [toc, setToc] = useState<TOCItemData[]>([]);
+  const [activeId, setActiveId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const headingElements = toc.map(item => document.getElementById(item.id)).filter(Boolean) as HTMLElement[];
+      
+      const headingPositions = headingElements.map(element => ({
+        id: element.id,
+        position: element.getBoundingClientRect().top - topOffset - 20
+      }));
+
+      const activeHeading = headingPositions.find(({ position }) => position >= 0) 
+        || headingPositions[headingPositions.length - 1];
+
+      if (activeHeading && activeHeading.id !== activeId) {
+        setActiveId(activeHeading.id);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    handleScroll();
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, [toc, topOffset, activeId]);
+
+  const handleTOCItemClick = (id: string) => {
+    const element = document.getElementById(id);
+    if (element) {
+      const elementRect = element.getBoundingClientRect();
+      const absoluteElementTop = elementRect.top + window.pageYOffset;
+      const scrollPosition = absoluteElementTop - topOffset - 20;
+
+      window.scrollTo({
+        top: scrollPosition,
+        behavior: 'smooth'
+      });
+    }
+  };
+
+  useLayoutEffect(() => {
+    setTimeout(() => {
+      const orderedHeadings = getOrderedHeadings(pagesData);
+      setToc(orderedHeadings);
+    }, 500);
+  }, [pagesData]);
+
+  return (
+    <div
+      css={css`
+        position: sticky;
+        right: 0;
+        top: ${topOffset}px;
+        height: calc(100vh - ${topOffset}px);
+        width: ${TOC_PANE_WIDTH}px;
+      `}
+    >
+      <TOCContainer>
+        <TOCContent>
+          <TOCHeader>
+            <List size={20} />
+            <h2>{t('Table of contents')}</h2>
+          </TOCHeader>
+          <TOCList>
+            {toc.map(item => (
+              <TOCItem
+                key={item.id}
+                depth={item.depth}
+                isActive={activeId === item.id}
+                onClick={() => handleTOCItemClick(item.id)}
+              >
+                {item.depth === 0 && <FileText size={16} />}
+                {item.title}
+              </TOCItem>
+            ))}
+          </TOCList>
+        </TOCContent>
+      </TOCContainer>
+    </div>
+  );
+};
+
+export default TableOfContents;
