@@ -452,22 +452,55 @@ export const TipTapEditor = ({ editMode, initialContent, component  , hoveredPos
     onUpdate: ({ editor }) => {
       const content = editor.getJSON()
       
-      // Get all current heading IDs
-      const currentHeadingIds = []
-      const findHeadingIds = (node) => {
+      // Track seen IDs and store duplicates
+      const seenIds = new Set()
+      const duplicateIds = new Set()
+      
+      // First pass: identify duplicate IDs
+      const findDuplicateIds = (node) => {
         if (node.type === 'heading' && node.attrs?.id) {
-          currentHeadingIds.push(node.attrs.id)
+          if (seenIds.has(node.attrs.id)) {
+            duplicateIds.add(node.attrs.id)
+          } else {
+            seenIds.add(node.attrs.id)
+          }
         }
         if (node.content) {
-          node.content.forEach(findHeadingIds)
+          node.content.forEach(findDuplicateIds)
         }
       }
-      findHeadingIds(content)
+      findDuplicateIds(content)
 
-      // Update headings state with only existing IDs
+      // Second pass: replace duplicate IDs with new ones
+      const currentHeadingIds = []
+      const updateDuplicateIds = (node) => {
+        if (node.type === 'heading' && node.attrs?.id) {
+          // If this ID was found to be a duplicate and this isn't its first occurrence
+          if (duplicateIds.has(node.attrs.id) && seenIds.has(node.attrs.id)) {
+            // Generate new ID for duplicate
+            const newId = `heading-${uuidv4()}`
+            node.attrs.id = newId
+            currentHeadingIds.push(newId)
+          } else {
+            currentHeadingIds.push(node.attrs.id)
+            if (duplicateIds.has(node.attrs.id)) {
+              seenIds.add(node.attrs.id)
+            }
+          }
+        }
+        if (node.content) {
+          node.content.forEach(updateDuplicateIds)
+        }
+      }
+      updateDuplicateIds(content)
+
+      // Update editor content with new IDs
+      editor.commands.setContent(content)
+
+      // Update headings state with current IDs
       setHeadings(prevHeadings => {
         if (!prevHeadings) return currentHeadingIds
-        return prevHeadings.filter(id => currentHeadingIds.includes(id))
+        return currentHeadingIds
       })
 
       // Your existing debounced update
@@ -630,20 +663,20 @@ export const TipTapEditor = ({ editMode, initialContent, component  , hoveredPos
 
   // Add this useEffect after other useEffects
   useEffect(() => {
-    const handleNewHeadings = (event) => {
-      const { headingIds } = event.detail;
-      if (headingIds && headingIds.length > 0) {
-        setHeadings(prevHeadings => [...(prevHeadings || []), ...headingIds]);
-      }
-    };
+    // const handleNewHeadings = (event) => {
+    //   const { headingIds } = event.detail;
+    //   if (headingIds && headingIds.length > 0) {
+    //     setHeadings(prevHeadings => [...(prevHeadings || []), ...headingIds]);
+    //   }
+    // };
 
-    // Add event listener
-    window.addEventListener('newHeadingsCreated', handleNewHeadings);
+    // // Add event listener
+    // window.addEventListener('newHeadingsCreated', handleNewHeadings);
 
-    // Cleanup
-    return () => {
-      window.removeEventListener('newHeadingsCreated', handleNewHeadings);
-    };
+    // // Cleanup
+    // return () => {
+    //   window.removeEventListener('newHeadingsCreated', handleNewHeadings);
+    // };
   }, [setHeadings]);
 
   // Don't render until client-side
