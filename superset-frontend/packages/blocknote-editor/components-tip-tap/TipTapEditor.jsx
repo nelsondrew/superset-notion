@@ -47,6 +47,7 @@ import { Extension } from '@tiptap/core'
 import { Heading } from '@tiptap/extension-heading'
 import { Plugin } from 'prosemirror-state'
 import { UniqueHeadingExtension } from './extensions/UniqueHeadingExtension'
+import { VideoExtension } from './extensions/VideoExtension'
 
 const EditorContainer = styled.div`
   background: ${props => props.$isDarkMode ? '#1A1B1E' : '#fff'};
@@ -458,6 +459,7 @@ export const TipTapEditor = ({ editMode, initialContent, component  , hoveredPos
       EmojiSuggestion,
       TabIndent,
       Comment,
+      VideoExtension,
     ],
     editable: editMode,
     injectCSS: false,
@@ -962,6 +964,17 @@ export const TipTapEditor = ({ editMode, initialContent, component  , hoveredPos
           $isDarkMode={isDarkMode}
         >
           {isExporting ? 'Exporting...' : 'Export to DOCX'}
+        </Button>
+        <Button
+          onClick={() => {
+            editor.chain().focus().setVideo({
+              width: '640px',
+              height: '480px'
+            }).run()
+          }}
+          $isDarkMode={isDarkMode}
+        >
+          Add Video
         </Button>
       </MenuBar>
       {editor && (
