@@ -48,6 +48,7 @@ import { Heading } from '@tiptap/extension-heading'
 import { Plugin } from 'prosemirror-state'
 import { UniqueHeadingExtension } from './extensions/UniqueHeadingExtension'
 import { VideoExtension } from './extensions/VideoExtension'
+import { ImageExtension } from './extensions/ImageExtension'
 
 const EditorContainer = styled.div`
   background: ${props => props.$isDarkMode ? '#1A1B1E' : '#fff'};
@@ -460,6 +461,7 @@ export const TipTapEditor = ({ editMode, initialContent, component  , hoveredPos
       TabIndent,
       Comment,
       VideoExtension,
+      ImageExtension,
     ],
     editable: editMode,
     injectCSS: false,
@@ -976,6 +978,17 @@ export const TipTapEditor = ({ editMode, initialContent, component  , hoveredPos
         >
           Add Video
         </Button>
+        <Button
+          onClick={() => {
+            editor.chain().focus().setImage({
+              width: '400px',
+              height: 'auto'
+            }).run()
+          }}
+          $isDarkMode={isDarkMode}
+        >
+          Add Image
+        </Button>
       </MenuBar>
       {editor && (
         <TextBubbleMenu 
@@ -1012,4 +1025,4 @@ export const TipTapEditor = ({ editMode, initialContent, component  , hoveredPos
   );
 };
 
-export default TipTapEditor  
+export default TipTapEditor;  
