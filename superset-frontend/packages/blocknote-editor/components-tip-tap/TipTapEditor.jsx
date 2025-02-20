@@ -341,7 +341,7 @@ const CustomHeading = Heading.extend({
   }
 })
 
-export const TipTapEditor = ({ editMode, initialContent, component  , hoveredPos , setHoveredPos, setHeadings }) => {
+export const TipTapEditor = ({ editMode, initialContent, component  , hoveredPos , setHoveredPos, setHeadings , parentId }) => {
   const [isMounted, setIsMounted] = useState(false)
   const [isEmojiModalOpen, setIsEmojiModalOpen] = useState(false)
   const [isDarkMode, setIsDarkMode] = useState(false)
@@ -475,10 +475,17 @@ export const TipTapEditor = ({ editMode, initialContent, component  , hoveredPos
       const currentHeadingIds = []
       const updateDuplicateIds = (node) => {
         if (node.type === 'heading' && node.attrs?.id) {
-          // If this ID was found to be a duplicate and this isn't its first occurrence
-          if (duplicateIds.has(node.attrs.id) && seenIds.has(node.attrs.id)) {
-            // Generate new ID for duplicate
-            const newId = `heading-${uuidv4()}`
+          // Extract parentId from the heading ID if it exists
+          const idParts = node.attrs.id.split('#');
+          const existingParentId = idParts.length === 3 ? idParts[0] : null;
+
+          // Generate new ID if:
+          // 1. It's a duplicate and not first occurrence
+          // 2. OR if the parentId in the heading ID doesn't match current parentId
+          if ((duplicateIds.has(node.attrs.id) && seenIds.has(node.attrs.id)) || 
+              (existingParentId && existingParentId !== parentId)) {
+            // Generate new ID with current parentId
+            const newId = `${parentId}#heading#${uuidv4()}`
             node.attrs.id = newId
             currentHeadingIds.push(newId)
           } else {
@@ -661,24 +668,6 @@ export const TipTapEditor = ({ editMode, initialContent, component  , hoveredPos
     }
   }, [])
 
-  // Add this useEffect after other useEffects
-  useEffect(() => {
-    // const handleNewHeadings = (event) => {
-    //   const { headingIds } = event.detail;
-    //   if (headingIds && headingIds.length > 0) {
-    //     setHeadings(prevHeadings => [...(prevHeadings || []), ...headingIds]);
-    //   }
-    // };
-
-    // // Add event listener
-    // window.addEventListener('newHeadingsCreated', handleNewHeadings);
-
-    // // Cleanup
-    // return () => {
-    //   window.removeEventListener('newHeadingsCreated', handleNewHeadings);
-    // };
-  }, [setHeadings]);
-
   // Don't render until client-side
   if (!isMounted) {
     return null;
@@ -824,7 +813,7 @@ export const TipTapEditor = ({ editMode, initialContent, component  , hoveredPos
         </Button>
         <Button
           onClick={() => {
-            const headerId = `heading-${uuidv4()}`
+            const headerId = `${parentId}#heading#${uuidv4()}`
             editor.chain().focus().toggleHeading({ 
               level: 1,
               id: headerId
@@ -838,7 +827,7 @@ export const TipTapEditor = ({ editMode, initialContent, component  , hoveredPos
         </Button>
         <Button
           onClick={() => {
-            const headerId = `heading-${uuidv4()}`
+            const headerId = `${parentId}#heading#${uuidv4()}`
             editor.chain().focus().toggleHeading({ 
               level: 2,
               id: headerId

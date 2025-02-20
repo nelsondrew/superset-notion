@@ -164,6 +164,12 @@ interface TOCItemData {
 const getOrderedHeadings = (pagesData: Record<string, { index: number; headings: string[] }>) => {
   if (!pagesData) return [];
   
+  // Helper function to check if string contains HTML tags
+  const containsHTMLTags = (str: string) => {
+    const htmlTagRegex = /<[^>]*>/;
+    return htmlTagRegex.test(str);
+  };
+  
   // Process all operations in a single pass
   const orderedHeadings = Object.entries(pagesData)
     .sort(([, a], [, b]) => a.index - b.index)
@@ -171,6 +177,9 @@ const getOrderedHeadings = (pagesData: Record<string, { index: number; headings:
     .map(id => {
       const element = document.getElementById(id);
       if (!element || !element.innerHTML) return null;
+      
+      // Skip if innerHTML contains HTML tags
+      if (containsHTMLTags(element.innerHTML)) return null;
       
       return {
         id,

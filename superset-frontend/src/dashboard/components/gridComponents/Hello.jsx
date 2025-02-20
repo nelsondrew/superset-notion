@@ -122,7 +122,7 @@ export default function Hello(props) {
 
   // Add selector to get latest dashboard layout
   const dashboardLayout = useSelector(state => state.dashboardLayout.present);
- 
+
   const dashboardGridChildren = dashboardLayout['GRID_ID']?.children || [];
   const [headings, setHeadings] = useState([])
   const pagesData = useSelector((state) => state?.dashboardInfo?.metadata?.pagesData);
@@ -132,7 +132,7 @@ export default function Hello(props) {
     // self index in dashboard grid
     const selfIndex = dashboardGridChildren.findIndex(item => item === component?.id);
     if (!pagesData.hasOwnProperty(component?.id)) {
-  
+
       dispatch(
         setDashboardMetadata({
           pagesData: {
@@ -158,7 +158,8 @@ export default function Hello(props) {
               }
             }
           })
-        )}
+        )
+      }
     }
 
   }, [headings])
@@ -436,7 +437,7 @@ export default function Hello(props) {
         }
       })
     }
-   
+
 
     dispatch(
       setDashboardMetadata({
@@ -445,7 +446,7 @@ export default function Hello(props) {
     )
     deleteComponent(id, parentComponent.id);
     // remove the entry for the component
-    
+
   };
 
   const handleAddPage = () => {
@@ -489,8 +490,8 @@ export default function Hello(props) {
       acceptedChildren={[CHART_TYPE]}
     >
       {({ dragSourceRef }) => (
-        <HelloDiv ref={dragSourceRef}>
-          <BlockNoteEditor setHeadings={setHeadings} hoveredPos={hoveredPos} setHoveredPos={setHoveredPos} component={component} />
+        <HelloDiv id={component?.id} ref={dragSourceRef}>
+          <BlockNoteEditor parentId={component?.id} setHeadings={setHeadings} hoveredPos={hoveredPos} setHoveredPos={setHoveredPos} component={component} />
           {editMode && (
             <DeleteButtonContainer editMode={editMode}>
               <DeleteComponentButton
