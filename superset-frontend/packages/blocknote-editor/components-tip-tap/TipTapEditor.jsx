@@ -79,8 +79,20 @@ const EditorContainer = styled.div`
       padding-left: 2rem;
     }
     
-    p.is-empty::before {
+    p.is-empty::before,
+    h1.is-empty::before,
+    h2.is-empty::before {
       color: ${props => props.$isDarkMode ? '#6B7280' : '#9ca3af'};
+      content: attr(data-placeholder);
+      float: left;
+      height: 0;
+      pointer-events: none;
+      position: absolute;
+      font-style: italic;
+    }
+
+    p.is-empty::before {
+      margin-left: 2rem;
     }
     
     code {
@@ -395,10 +407,14 @@ export const TipTapEditor = ({ editMode, initialContent, component  , hoveredPos
         types: ['textStyle'],
       }),
       Placeholder.configure({
-        placeholder: 'Enter text or type "/" for commands...',
-        emptyNodeClass: 'is-empty',
-        showOnlyWhenEditable: true,
-        includeChildren: true,
+        placeholder: ({ node }) => {
+          if (node.type.name === 'heading') {
+            return "What's the title?"
+          }
+          return 'Press "/" for commands, or start typing...'
+        },
+        showOnlyWhenEmpty: true,
+        showOnlyCurrent: true,
       }),
       Subscript,
       Superscript,
