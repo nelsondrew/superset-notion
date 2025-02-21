@@ -97,7 +97,7 @@ export default forwardRef((props, ref) => {
   const items = getSuggestionItems({ query: '' })
   const flatItems = items.reduce((acc, group) => [...acc, ...group.children], [])
 
-  const selectItem = useCallback((index) => {
+  const selectItem = (index) => {
     const item = flatItems[index]
     if (item) {
       // Execute command
@@ -109,9 +109,9 @@ export default forwardRef((props, ref) => {
         }
       })
       // Close popup after command execution
-      props.onClose?.()
+      props.onClose()
     }
-  }, [props.editor, props.position, flatItems, props.onClose])
+  }
 
   const upHandler = () => {
     setSelectedIndex(i => (i - 1 + flatItems.length) % flatItems.length)

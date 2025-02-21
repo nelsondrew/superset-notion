@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import styled from "styled-components";
+import styled, { createGlobalStyle } from "styled-components";
 import 'tippy.js/dist/tippy.css';
 import TipTapEditor from "./components-tip-tap/TipTapEditor"
 import { useSelector} from 'react-redux';
@@ -9,6 +9,30 @@ import tippy from 'tippy.js';
 import { ReactRenderer } from '@tiptap/react';
 import AddBlockMenu from './components-tip-tap/AddBlockMenu';
 import { Popover } from 'antd';
+
+const GlobalPopoverStyles = createGlobalStyle`
+  .ant-popover-inner {
+    background: #1a1a1a;
+    border-radius: 12px;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .ant-popover-inner-content {
+    padding: 0;
+  }
+
+  .ant-popover-arrow {
+    color: black;
+    border-top-color: black !important;
+    border-left-color: black !important;
+  }
+
+  .ant-popover {
+    z-index: 1000;
+  }
+`;
 
 const EditorContainer = styled.div`
   text-align: left;
@@ -204,7 +228,7 @@ export default function BlockNoteEditor({ component, hoveredPos, setHoveredPos, 
   const [editorInstance, setEditorInstance] = useState(null)
 
   const handleMouseMove = (event) => {
-    if(isOverPopup) return;
+    if(showPopover) return;
     const editor = editorInstance;
     if (!editor?.view) return;
 
@@ -260,17 +284,15 @@ export default function BlockNoteEditor({ component, hoveredPos, setHoveredPos, 
     }
   };
 
-  useEffect(() => {
-    console.log(isOverPopup, "is over popup")
-  },[isOverPopup])
 
   const handleAdd = () => {
-    const editor = window.editor;
+    const editor = editorInstance;
     if (!editor || !hoverInfo) return;
     setShowPopover(true);
   };
 
   const handlePopoverClose = () => {
+    console.log("called popover close")
     setShowPopover(false);
     setIsOverPopup(false);
   };
@@ -281,57 +303,62 @@ export default function BlockNoteEditor({ component, hoveredPos, setHoveredPos, 
   };
 
   return (
-    <EditorContainer 
-      ref={editorRef}
-      className="blocknote-editor"
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
-    >
-      {editMode && hoverInfo && (
-        <HoverIndicator
-          style={{
-            position: 'absolute',
-            top: `${hoverInfo.top - 8}px`,
-          }}
-        >
-          <Popover
-            open={showPopover}
-            onOpenChange={(visible) => {
-              setShowPopover(visible);
-              setIsOverPopup(visible);
+    <>
+      <GlobalPopoverStyles />
+      <EditorContainer 
+        ref={editorRef}
+        className="blocknote-editor"
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
+      >
+        {editMode && hoverInfo && (
+          <HoverIndicator
+            style={{
+              position: 'absolute',
+              top: `${hoverInfo.top - 8}px`,
             }}
-            content={
-              <AddBlockMenu
-                editor={editorInstance}
-                position={hoverInfo.position}
-                onClose={handlePopoverClose}
-                onMouseEnter={() => setIsOverPopup(true)}
-                onMouseLeave={() => setIsOverPopup(false)}
-              />
-            }
-            trigger="click"
-            placement="bottomLeft"
-            destroyTooltipOnHide
           >
-            <IconButton onClick={handleAdd} title="Add block">
-              <Plus size={16} />
+            <Popover
+              visible={showPopover}
+              onVisibleChange={(visible) => {
+                if (!visible) {
+                  handlePopoverClose();
+                }
+                setIsOverPopup(visible);
+              }}
+              content={
+                <AddBlockMenu
+                  editor={editorInstance}
+                  position={hoverInfo.position}
+                  onClose={handlePopoverClose}
+                  onMouseEnter={() => setIsOverPopup(true)}
+                  onMouseLeave={() => setIsOverPopup(false)}
+                />
+              }
+              trigger="click"
+              placement="bottomLeft"
+              destroyTooltipOnHide
+            >
+              <IconButton onClick={handleAdd} title="Add block">
+                <Plus size={16} />
+              </IconButton>
+            </Popover>
+            <IconButton onMouseDown={handleDrag} title="Drag to move">
+              <GripVertical size={16} />
             </IconButton>
-          </Popover>
-          <IconButton onMouseDown={handleDrag} title="Drag to move">
-            <GripVertical size={16} />
-          </IconButton>
-        </HoverIndicator>
-      )}
-      <TipTapEditor 
-        editMode={editMode}
-        initialContent={editorContent}
-        component={component}
-        hoveredPos={hoveredPos}
-        setHoveredPos={setHoveredPos}
-        setHeadings={setHeadings}
-        parentId={parentId}
-        setEditorInstance={setEditorInstance}
-      />
-    </EditorContainer>
+          </HoverIndicator>
+        )}
+        <TipTapEditor 
+          editMode={editMode}
+          initialContent={editorContent}
+          component={component}
+          hoveredPos={hoveredPos}
+          setHoveredPos={setHoveredPos}
+          setHeadings={setHeadings}
+          parentId={parentId}
+          setEditorInstance={setEditorInstance}
+        />
+      </EditorContainer>
+    </>
   );
 }
