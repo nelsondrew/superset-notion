@@ -127,9 +127,31 @@ export const getSuggestionItems = ({ query }) => {
         {
           title: 'Image',
           subtitle: 'Upload an image',
-          command: ({ editor }) => {
-            const fileInput = document.querySelector('input[type="file"]')
-            fileInput?.click()
+          command: ({ editor, range }) => {
+            editor
+              .chain()
+              .focus()
+              .deleteRange(range)
+              .setImage({
+                width: '400px',
+                height: 'auto'
+              })
+              .run()
+          }
+        },
+        {
+          title: 'Video',
+          subtitle: 'Add a video block',
+          command: ({ editor, range }) => {
+            editor
+              .chain()
+              .focus()
+              .deleteRange(range)
+              .setVideo({
+                width: '400px',
+                height: 'auto'
+              })
+              .run()
           }
         },
         {
