@@ -21,7 +21,7 @@ import Typography from '@tiptap/extension-typography'
 import { SlashCommand, getSuggestionItems, renderItems } from './extensions/SlashCommand'
 import styled from 'styled-components'
 import 'tippy.js/dist/tippy.css'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { ChartExtension } from './extensions/ChartExtension'
 import { ChartBubbleMenu } from './ChartBubbleMenu'
 import { EmojiSuggestion } from './extensions/EmojiSuggestion'
@@ -372,6 +372,95 @@ export const TipTapEditor = ({ editMode, initialContent, component  , hoveredPos
   // Add state for popover portal container
   const [portalContainer, setPortalContainer] = useState(null)
 
+  // Create a ref to store the update callback
+  const updateCallbackRef = useRef(null)
+
+  // Define the update callback
+  updateCallbackRef.current = (editor) => {
+    if (!editor) return
+
+    const content = editor.getJSON()
+    
+    // Track seen IDs and store duplicates
+    const seenIds = new Set()
+    const duplicateIds = new Set()
+    
+    // First pass: identify duplicate IDs and headings without parent ID
+    const findDuplicateIds = (node) => {
+      if (node.type === 'heading' && node.attrs?.id) {
+        const idParts = node.attrs.id.split('#')
+        // Check if ID has correct parent ID format
+        if (idParts.length !== 3 || idParts[0] !== parentId) {
+          duplicateIds.add(node.attrs.id) // Mark for update if parent ID is missing or wrong
+        } else if (seenIds.has(node.attrs.id)) {
+          duplicateIds.add(node.attrs.id)
+        } else {
+          seenIds.add(node.attrs.id)
+        }
+      }
+      if (node.content) {
+        node.content.forEach(findDuplicateIds)
+      }
+    }
+    findDuplicateIds(content)
+
+    // Second pass: update IDs
+    const currentHeadingIds = []
+    const updateDuplicateIds = (node) => {
+      if (node.type === 'heading') {
+        // Always ensure heading has an ID
+        if (!node.attrs) node.attrs = {}
+        
+        let shouldUpdateId = false
+        
+        // Check if ID exists and has correct format
+        if (!node.attrs.id) {
+          shouldUpdateId = true
+        } else {
+          const idParts = node.attrs.id.split('#')
+          shouldUpdateId = idParts.length !== 3 || 
+                          idParts[0] !== parentId ||
+                          duplicateIds.has(node.attrs.id)
+        }
+
+        if (shouldUpdateId) {
+          // Generate new ID with parent ID
+          const newId = `${parentId}#heading#${uuidv4()}`
+          node.attrs.id = newId
+          currentHeadingIds.push(newId)
+        } else {
+          currentHeadingIds.push(node.attrs.id)
+        }
+      }
+      
+      if (node.content) {
+        node.content = node.content.map(updateDuplicateIds)
+      }
+      return node
+    }
+
+    // Create a deep copy and update content
+    const updatedContent = JSON.parse(JSON.stringify(content))
+    const newContent = updateDuplicateIds(updatedContent)
+
+    // Only update if content has changed
+    if (JSON.stringify(content) !== JSON.stringify(newContent)) {
+      editor.commands.setContent(newContent, false, { 
+        preserveWhitespace: true,
+        preserveSelection: true 
+      })
+    }
+
+    // Update headings state
+    setHeadings(prevHeadings => {
+      if (!prevHeadings) return currentHeadingIds
+      return currentHeadingIds
+    })
+
+    // Debounced update
+    debounceUpdateEditorComponent(newContent)
+  }
+
   const updateEditorComponentMeta = (editorJsonContent) => {
     if(component) {
       dispatch(
@@ -466,72 +555,15 @@ export const TipTapEditor = ({ editMode, initialContent, component  , hoveredPos
     editable: editMode,
     injectCSS: false,
     content: component?.meta?.editorJson || initialContent, 
-    onCreate() {
+    onBeforeCreate: ({ editor }) => {
+      // Make editor instance available globally when created
+      window.editor = editor;
+    },
+    onCreate: ({ editor }) => {
       setIsMounted(true)
     },
     onUpdate: ({ editor }) => {
-      const content = editor.getJSON()
-      
-      // Track seen IDs and store duplicates
-      const seenIds = new Set()
-      const duplicateIds = new Set()
-      
-      // First pass: identify duplicate IDs
-      const findDuplicateIds = (node) => {
-        if (node.type === 'heading' && node.attrs?.id) {
-          if (seenIds.has(node.attrs.id)) {
-            duplicateIds.add(node.attrs.id)
-          } else {
-            seenIds.add(node.attrs.id)
-          }
-        }
-        if (node.content) {
-          node.content.forEach(findDuplicateIds)
-        }
-      }
-      findDuplicateIds(content)
-
-      // Second pass: replace duplicate IDs with new ones
-      const currentHeadingIds = []
-      const updateDuplicateIds = (node) => {
-        if (node.type === 'heading' && node.attrs?.id) {
-          // Extract parentId from the heading ID if it exists
-          const idParts = node.attrs.id.split('#');
-          const existingParentId = idParts.length === 3 ? idParts[0] : null;
-
-          // Generate new ID if:
-          // 1. It's a duplicate and not first occurrence
-          // 2. OR if the parentId in the heading ID doesn't match current parentId
-          if ((duplicateIds.has(node.attrs.id) && seenIds.has(node.attrs.id)) || 
-              (existingParentId && existingParentId !== parentId)) {
-            // Generate new ID with current parentId
-            const newId = `${parentId}#heading#${uuidv4()}`
-            node.attrs.id = newId
-            currentHeadingIds.push(newId)
-          } else {
-            currentHeadingIds.push(node.attrs.id)
-            if (duplicateIds.has(node.attrs.id)) {
-              seenIds.add(node.attrs.id)
-            }
-          }
-        }
-        if (node.content) {
-          node.content.forEach(updateDuplicateIds)
-        }
-      }
-      updateDuplicateIds(content)
-
-      // Update editor content with new IDs
-      editor.commands.setContent(content)
-
-      // Update headings state with current IDs
-      setHeadings(prevHeadings => {
-        if (!prevHeadings) return currentHeadingIds
-        return currentHeadingIds
-      })
-
-      // Your existing debounced update
-      debounceUpdateEditorComponent(content)
+      updateCallbackRef.current?.(editor)
     },
     onFocus: () => {
       // When editor is focused, set data attribute on parent
@@ -574,10 +606,6 @@ export const TipTapEditor = ({ editMode, initialContent, component  , hoveredPos
         return DecorationSet.empty;
       },
       setHeadings
-    },
-    onBeforeCreate: ({ editor }) => {
-      // Make editor instance available globally when created
-      window.editor = editor;
     },
     onDestroy: () => {
       // Clean up global reference when editor is destroyed
