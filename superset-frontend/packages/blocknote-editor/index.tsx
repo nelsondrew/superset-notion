@@ -8,6 +8,7 @@ import { renderToString } from 'react-dom/server';
 import tippy from 'tippy.js';
 import { ReactRenderer } from '@tiptap/react';
 import AddBlockMenu from './components-tip-tap/AddBlockMenu';
+import { Popover } from 'antd';
 
 const EditorContainer = styled.div`
   text-align: left;
@@ -199,11 +200,18 @@ export default function BlockNoteEditor({ component, hoveredPos, setHoveredPos, 
   const [hoverInfo, setHoverInfo] = useState(null);
   const editorRef = useRef(null);
   const [isOverPopup, setIsOverPopup] = useState(false);
+  const [showPopover, setShowPopover] = useState(false);
+  const [editorInstance, setEditorInstance] = useState(null)
 
   const handleMouseMove = (event) => {
     if(isOverPopup) return;
-    const editor = window.editor;
+    const editor = editorInstance;
     if (!editor?.view) return;
+
+    // Get editor container position
+    const editorContainer = editorRef.current;
+    if (!editorContainer) return;
+    const containerRect = editorContainer.getBoundingClientRect();
 
     const pos = editor.view.posAtCoords({
       left: event.clientX,
@@ -234,11 +242,12 @@ export default function BlockNoteEditor({ component, hoveredPos, setHoveredPos, 
         // Get coordinates of the node
         const coords = editor.view.coordsAtPos(pos.pos);
         
+        // Calculate position relative to editor container
         setHoverInfo({
           type: foundNode.type.name,
           position: pos.pos,
-          top: coords.top,
-          left: coords.left
+          top: coords.top - containerRect.top,
+          left: coords.left - containerRect.left
         });
       }
     }
@@ -258,68 +267,12 @@ export default function BlockNoteEditor({ component, hoveredPos, setHoveredPos, 
   const handleAdd = () => {
     const editor = window.editor;
     if (!editor || !hoverInfo) return;
+    setShowPopover(true);
+  };
 
-    const coords = editor.view.coordsAtPos(hoverInfo.position);
-
-    const addBlockMenuRef = {
-      onKeyDown: () => false,
-    };
-
-    let component;
-    let popup;
-
-    const destroy = () => {
-      popup?.[0].destroy();
-      component?.destroy();
-      setIsOverPopup(false);
-    };
-
-    component = new ReactRenderer(AddBlockMenu, {
-      props: {
-        editor,
-        position: hoverInfo.position,
-        onRef: (methods) => {
-          if (methods) {
-            addBlockMenuRef.onKeyDown = methods.onKeyDown;
-          }
-        },
-        onClose: destroy,
-        onMouseEnter: () => setIsOverPopup(true),
-        onMouseLeave: () => setIsOverPopup(false)
-      },
-      editor,
-    });
-
-    popup = tippy('body', {
-      getReferenceClientRect: () => ({
-        top: coords.top,
-        bottom: coords.bottom,
-        left: coords.left - 60,
-        right: coords.right,
-        width: 0,
-        height: coords.bottom - coords.top,
-        x: coords.left,
-        y: coords.top,
-      }),
-      appendTo: () => document.body,
-      content: component.element,
-      showOnCreate: true,
-      interactive: true,
-      trigger: 'manual',
-      placement: 'bottom-start',
-      onMount: () => setIsOverPopup(true),
-      onHide: () => setIsOverPopup(false)
-    });
-
-    popup[0].show();
-
-    // Cleanup on editor blur
-    editor.on('blur', (event) => {
-      // Only destroy if we're not over the popup
-      if (!isOverPopup) {
-        destroy();
-      }
-    });
+  const handlePopoverClose = () => {
+    setShowPopover(false);
+    setIsOverPopup(false);
   };
 
   const handleDrag = (e) => {
@@ -338,12 +291,32 @@ export default function BlockNoteEditor({ component, hoveredPos, setHoveredPos, 
         <HoverIndicator
           style={{
             position: 'absolute',
-            top: `${hoverInfo.top - 172.52 + 17}px`,
+            top: `${hoverInfo.top - 8}px`,
           }}
         >
-          <IconButton onClick={handleAdd} title="Add block">
-            <Plus size={16} />
-          </IconButton>
+          <Popover
+            open={showPopover}
+            onOpenChange={(visible) => {
+              setShowPopover(visible);
+              setIsOverPopup(visible);
+            }}
+            content={
+              <AddBlockMenu
+                editor={editorInstance}
+                position={hoverInfo.position}
+                onClose={handlePopoverClose}
+                onMouseEnter={() => setIsOverPopup(true)}
+                onMouseLeave={() => setIsOverPopup(false)}
+              />
+            }
+            trigger="click"
+            placement="bottomLeft"
+            destroyTooltipOnHide
+          >
+            <IconButton onClick={handleAdd} title="Add block">
+              <Plus size={16} />
+            </IconButton>
+          </Popover>
           <IconButton onMouseDown={handleDrag} title="Drag to move">
             <GripVertical size={16} />
           </IconButton>
@@ -357,6 +330,7 @@ export default function BlockNoteEditor({ component, hoveredPos, setHoveredPos, 
         setHoveredPos={setHoveredPos}
         setHeadings={setHeadings}
         parentId={parentId}
+        setEditorInstance={setEditorInstance}
       />
     </EditorContainer>
   );

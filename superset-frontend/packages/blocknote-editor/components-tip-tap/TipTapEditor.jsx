@@ -356,7 +356,7 @@ const CustomHeading = Heading.extend({
   }
 })
 
-export const TipTapEditor = ({ editMode, initialContent, component  , hoveredPos , setHoveredPos, setHeadings , parentId }) => {
+export const TipTapEditor = ({ editMode, initialContent, component  , hoveredPos , setHoveredPos, setHeadings , parentId , setEditorInstance }) => {
   const [isMounted, setIsMounted] = useState(false)
   const [isEmojiModalOpen, setIsEmojiModalOpen] = useState(false)
   const [isDarkMode, setIsDarkMode] = useState(false)
@@ -559,6 +559,7 @@ export const TipTapEditor = ({ editMode, initialContent, component  , hoveredPos
     onBeforeCreate: ({ editor }) => {
       // Make editor instance available globally when created
       window.editor = editor;
+      setEditorInstance(editor)
     },
     onCreate: ({ editor }) => {
       setIsMounted(true)
