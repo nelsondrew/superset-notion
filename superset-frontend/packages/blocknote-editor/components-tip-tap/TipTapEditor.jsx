@@ -21,7 +21,7 @@ import Typography from '@tiptap/extension-typography'
 import { SlashCommand, getSuggestionItems, renderItems } from './extensions/SlashCommand'
 import styled from 'styled-components'
 import 'tippy.js/dist/tippy.css'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { ChartExtension } from './extensions/ChartExtension'
 import { ChartBubbleMenu } from './ChartBubbleMenu'
 import { EmojiSuggestion } from './extensions/EmojiSuggestion'
@@ -43,6 +43,12 @@ import { CommentsThread } from './CommentsThread'
 import { v4 as uuidv4 } from 'uuid'
 import { createPortal } from 'react-dom'
 import { DecorationSet, Decoration } from 'prosemirror-view'
+import { Extension } from '@tiptap/core'
+import { Heading } from '@tiptap/extension-heading'
+import { Plugin } from 'prosemirror-state'
+import { UniqueHeadingExtension } from './extensions/UniqueHeadingExtension'
+import { VideoExtension } from './extensions/VideoExtension'
+import { ImageExtension } from './extensions/ImageExtension'
 
 const EditorContainer = styled.div`
   background: ${props => props.$isDarkMode ? '#1A1B1E' : '#fff'};
@@ -75,8 +81,20 @@ const EditorContainer = styled.div`
       padding-left: 2rem;
     }
     
-    p.is-empty::before {
+    p.is-empty::before,
+    h1.is-empty::before,
+    h2.is-empty::before {
       color: ${props => props.$isDarkMode ? '#6B7280' : '#9ca3af'};
+      content: attr(data-placeholder);
+      float: left;
+      height: 0;
+      pointer-events: none;
+      position: absolute;
+      font-style: italic;
+    }
+
+    p.is-empty::before {
+      margin-left: 2rem;
     }
     
     code {
@@ -176,6 +194,7 @@ const ToggleSwitch = styled.label`
   background: #E4E6EB;
   border-radius: 50px;
   cursor: pointer;
+  margin-top: 3rem;
   padding: 4px;
   border: ${props => props.$isDarkMode ? '1px solid white' : ''};
 
@@ -311,8 +330,32 @@ const PopoverContainer = styled.div`
     pointer-events: auto;
   }
 `
+// Create custom heading extension
+const CustomHeading = Heading.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      level: {
+        default: 1,
+        rendered: true
+      },
+      id: {
+        default: null,
+        parseHTML: element => element.getAttribute('id'),
+        renderHTML: attributes => {
+          if (!attributes.id) {
+            const headerId = `heading-${uuidv4()}`
+            attributes.id = headerId
+            return { id: headerId }
+          }
+          return { id: attributes.id }
+        }
+      }
+    }
+  }
+})
 
-export const TipTapEditor = ({ editMode, initialContent, component  , hoveredPos , setHoveredPos }) => {
+export const TipTapEditor = ({ editMode, initialContent, component  , hoveredPos , setHoveredPos, setHeadings , parentId }) => {
   const [isMounted, setIsMounted] = useState(false)
   const [isEmojiModalOpen, setIsEmojiModalOpen] = useState(false)
   const [isDarkMode, setIsDarkMode] = useState(false)
@@ -328,6 +371,95 @@ export const TipTapEditor = ({ editMode, initialContent, component  , hoveredPos
 
   // Add state for popover portal container
   const [portalContainer, setPortalContainer] = useState(null)
+
+  // Create a ref to store the update callback
+  const updateCallbackRef = useRef(null)
+
+  // Define the update callback
+  updateCallbackRef.current = (editor) => {
+    if (!editor) return
+
+    const content = editor.getJSON()
+    
+    // Track seen IDs and store duplicates
+    const seenIds = new Set()
+    const duplicateIds = new Set()
+    
+    // First pass: identify duplicate IDs and headings without parent ID
+    const findDuplicateIds = (node) => {
+      if (node.type === 'heading' && node.attrs?.id) {
+        const idParts = node.attrs.id.split('#')
+        // Check if ID has correct parent ID format
+        if (idParts.length !== 3 || idParts[0] !== parentId) {
+          duplicateIds.add(node.attrs.id) // Mark for update if parent ID is missing or wrong
+        } else if (seenIds.has(node.attrs.id)) {
+          duplicateIds.add(node.attrs.id)
+        } else {
+          seenIds.add(node.attrs.id)
+        }
+      }
+      if (node.content) {
+        node.content.forEach(findDuplicateIds)
+      }
+    }
+    findDuplicateIds(content)
+
+    // Second pass: update IDs
+    const currentHeadingIds = []
+    const updateDuplicateIds = (node) => {
+      if (node.type === 'heading') {
+        // Always ensure heading has an ID
+        if (!node.attrs) node.attrs = {}
+        
+        let shouldUpdateId = false
+        
+        // Check if ID exists and has correct format
+        if (!node.attrs.id) {
+          shouldUpdateId = true
+        } else {
+          const idParts = node.attrs.id.split('#')
+          shouldUpdateId = idParts.length !== 3 || 
+                          idParts[0] !== parentId ||
+                          duplicateIds.has(node.attrs.id)
+        }
+
+        if (shouldUpdateId) {
+          // Generate new ID with parent ID
+          const newId = `${parentId}#heading#${uuidv4()}`
+          node.attrs.id = newId
+          currentHeadingIds.push(newId)
+        } else {
+          currentHeadingIds.push(node.attrs.id)
+        }
+      }
+      
+      if (node.content) {
+        node.content = node.content.map(updateDuplicateIds)
+      }
+      return node
+    }
+
+    // Create a deep copy and update content
+    const updatedContent = JSON.parse(JSON.stringify(content))
+    const newContent = updateDuplicateIds(updatedContent)
+
+    // Only update if content has changed
+    if (JSON.stringify(content) !== JSON.stringify(newContent)) {
+      editor.commands.setContent(newContent, false, { 
+        preserveWhitespace: true,
+        preserveSelection: true 
+      })
+    }
+
+    // Update headings state
+    setHeadings(prevHeadings => {
+      if (!prevHeadings) return currentHeadingIds
+      return currentHeadingIds
+    })
+
+    // Debounced update
+    debounceUpdateEditorComponent(newContent)
+  }
 
   const updateEditorComponentMeta = (editorJsonContent) => {
     if(component) {
@@ -350,10 +482,13 @@ export const TipTapEditor = ({ editMode, initialContent, component  , hoveredPos
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
-        heading: {
-          levels: [1, 2]
-        },
-        typography: false,
+        heading: false,
+      }),
+      UniqueHeadingExtension.configure({
+        setHeadings: setHeadings,
+      }),
+      CustomHeading.configure({
+        levels: [1, 2]
       }),
       Color,
       FontFamily,
@@ -363,10 +498,14 @@ export const TipTapEditor = ({ editMode, initialContent, component  , hoveredPos
         types: ['textStyle'],
       }),
       Placeholder.configure({
-        placeholder: 'Enter text or type "/" for commands...',
-        emptyNodeClass: 'is-empty',
-        showOnlyWhenEditable: true,
-        includeChildren: true,
+        placeholder: ({ node }) => {
+          if (node.type.name === 'heading') {
+            return "What's the title?"
+          }
+          return 'Press "/" for commands, or start typing...'
+        },
+        showOnlyWhenEmpty: true,
+        showOnlyCurrent: true,
       }),
       Subscript,
       Superscript,
@@ -410,15 +549,21 @@ export const TipTapEditor = ({ editMode, initialContent, component  , hoveredPos
       EmojiSuggestion,
       TabIndent,
       Comment,
+      VideoExtension,
+      ImageExtension,
     ],
     editable: editMode,
     injectCSS: false,
     content: component?.meta?.editorJson || initialContent, 
-    onCreate() {
+    onBeforeCreate: ({ editor }) => {
+      // Make editor instance available globally when created
+      window.editor = editor;
+    },
+    onCreate: ({ editor }) => {
       setIsMounted(true)
     },
     onUpdate: ({ editor }) => {
-      debounceUpdateEditorComponent(editor.getJSON())
+      updateCallbackRef.current?.(editor)
     },
     onFocus: () => {
       // When editor is focused, set data attribute on parent
@@ -459,11 +604,8 @@ export const TipTapEditor = ({ editMode, initialContent, component  , hoveredPos
         }
         
         return DecorationSet.empty;
-      }
-    },
-    onBeforeCreate: ({ editor }) => {
-      // Make editor instance available globally when created
-      window.editor = editor;
+      },
+      setHeadings
     },
     onDestroy: () => {
       // Clean up global reference when editor is destroyed
@@ -573,37 +715,6 @@ export const TipTapEditor = ({ editMode, initialContent, component  , hoveredPos
       document.body.removeChild(container)
     }
   }, [])
-
-  useEffect(() => {
-    if (!editor) return;
-
-    const handleMouseMove = (event) => {
-      const pos = editor.view.posAtCoords({
-        left: event.clientX,
-        top: event.clientY
-      });
-
-      if (pos) {
-        console.log(pos.pos)
-        setHoveredPos(pos.pos);
-      } else {
-        setHoveredPos(null);
-      }
-    };
-
-    const handleMouseLeave = () => {
-      setHoveredPos(null);
-    };
-
-    // const editorElement = editor.view.dom;
-    // editorElement.addEventListener('mousemove', handleMouseMove);
-    // editorElement.addEventListener('mouseleave', handleMouseLeave);
-
-    // return () => {
-    //   editorElement.removeEventListener('mousemove', handleMouseMove);
-    //   editorElement.removeEventListener('mouseleave', handleMouseLeave);
-    // };
-  }, [editor]);
 
   // Don't render until client-side
   if (!isMounted) {
@@ -749,14 +860,28 @@ export const TipTapEditor = ({ editMode, initialContent, component  , hoveredPos
           Paragraph
         </Button>
         <Button
-          onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
+          onClick={() => {
+            const headerId = `${parentId}#heading#${uuidv4()}`
+            editor.chain().focus().toggleHeading({ 
+              level: 1,
+              id: headerId
+            }).run()
+            setHeadings((prevHeadings) => [...(prevHeadings || []), headerId])
+          }}
           active={editor.isActive('heading', { level: 1 })}
           $isDarkMode={isDarkMode}
         >
           H1
         </Button>
         <Button
-          onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+          onClick={() => {
+            const headerId = `${parentId}#heading#${uuidv4()}`
+            editor.chain().focus().toggleHeading({ 
+              level: 2,
+              id: headerId
+            }).run()
+            setHeadings((prevHeadings) => [...(prevHeadings || []), headerId])
+          }}
           active={editor.isActive('heading', { level: 2 })}
           $isDarkMode={isDarkMode}
         >
@@ -870,6 +995,28 @@ export const TipTapEditor = ({ editMode, initialContent, component  , hoveredPos
         >
           {isExporting ? 'Exporting...' : 'Export to DOCX'}
         </Button>
+        <Button
+          onClick={() => {
+            editor.chain().focus().setVideo({
+              width: '640px',
+              height: '480px'
+            }).run()
+          }}
+          $isDarkMode={isDarkMode}
+        >
+          Add Video
+        </Button>
+        <Button
+          onClick={() => {
+            editor.chain().focus().setImage({
+              width: '400px',
+              height: 'auto'
+            }).run()
+          }}
+          $isDarkMode={isDarkMode}
+        >
+          Add Image
+        </Button>
       </MenuBar>
       {editor && (
         <TextBubbleMenu 
@@ -906,4 +1053,4 @@ export const TipTapEditor = ({ editMode, initialContent, component  , hoveredPos
   );
 };
 
-export default TipTapEditor  
+export default TipTapEditor;  

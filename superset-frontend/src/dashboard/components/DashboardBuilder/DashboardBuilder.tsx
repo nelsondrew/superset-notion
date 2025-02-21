@@ -81,6 +81,7 @@ import { getRootLevelTabsComponent, shouldFocusTabs } from './utils';
 import DashboardContainer from './DashboardContainer';
 import { useNativeFilters } from './state';
 import DashboardWrapper from './DashboardWrapper';
+import TableOfContents from '../TableOfContents';
 
 // @z-index-above-dashboard-charts + 1 = 11
 const FiltersPanel = styled.div<{ width: number; hidden: boolean }>`
@@ -305,12 +306,11 @@ const StyledDashboardContent = styled.div<{
 
       ${editMode &&
       `
-      max-width: calc(100% - ${
-        BUILDER_SIDEPANEL_WIDTH + theme.gridUnit * 16
-      }px);
-    `}
-
-      /* this is the ParentSize wrapper */
+        max-width: calc(100% - ${
+          BUILDER_SIDEPANEL_WIDTH + theme.gridUnit * 16
+        }px);
+      `}
+         /* this is the ParentSize wrapper */
     & > div:first-child {
         height: inherit !important;
       }
@@ -711,7 +711,8 @@ const DashboardBuilder = () => {
             ) : (
               <Loading />
             )}
-            {editMode && <BuilderComponentPane topOffset={barTopOffset} />}
+            {!editMode && <TableOfContents topOffset={barTopOffset} />}
+            {editMode && <BuilderComponentPane topOffset={0} />}
           </StyledDashboardContent>
         </DashboardContentWrapper>
       </StyledContent>

@@ -154,7 +154,7 @@ const EditorContainer = styled.div`
   }
 `;
 
-export default function BlockNoteEditor({ component , hoveredPos , setHoveredPos }) {
+export default function BlockNoteEditor({ component , hoveredPos , setHoveredPos , setHeadings , parentId }) {
   const editMode = useSelector(state => state?.dashboardState?.editMode);
   const [editorContent, setEditorContent] = useState(null);
   
@@ -169,6 +169,8 @@ export default function BlockNoteEditor({ component , hoveredPos , setHoveredPos
         component={component}
         hoveredPos={hoveredPos}
         setHoveredPos={setHoveredPos}
+        setHeadings={setHeadings}
+        parentId={parentId}
       />
     </EditorContainer>
   );

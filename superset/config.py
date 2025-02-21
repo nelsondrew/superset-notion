@@ -1612,14 +1612,15 @@ TALISMAN_CONFIG = {
             "data:",
             "https://apachesuperset.gateway.scarf.sh",
             "https://static.scarf.sh/",
-            # "https://avatars.slack-edge.com", # Uncomment when SLACK_ENABLE_AVATARS is True  # noqa: E501
+            "https://www.youtube.com/",  # Allow YouTube images
             "ows.terrestris.de",
         ],
-        "worker-src": ["'self'", "blob:"],
+        "worker-src": ["'self'", "blob:", "https://www.youtube.com/"],
         "connect-src": [
             "'self'",
             "https://api.mapbox.com",
             "https://events.mapbox.com",
+            "https://www.youtube.com/"  # Allow connecting to YouTube
         ],
         "object-src": "'none'",
         "style-src": [
@@ -1627,6 +1628,13 @@ TALISMAN_CONFIG = {
             "'unsafe-inline'",
         ],
         "script-src": ["'self'", "'strict-dynamic'"],
+        "frame-src": [
+            "'self'",
+            "https://www.youtube.com",  # Allow YouTube iframes
+            "https://youtube.com",
+            "https://www.youtube-nocookie.com"
+        ],
+        "frame-ancestors": ["'self'"],
     },
     "content_security_policy_nonce_in": ["script-src"],
     "force_https": False,
@@ -1644,20 +1652,30 @@ TALISMAN_DEV_CONFIG = {
             "https://apachesuperset.gateway.scarf.sh",
             "https://static.scarf.sh/",
             "https://avatars.slack-edge.com",
+            "https://www.youtube.com/",  # Allow YouTube images
             "ows.terrestris.de",
         ],
-        "worker-src": ["'self'", "blob:"],
+        "worker-src": ["'self'", "blob:", "https://www.youtube.com/"],
         "connect-src": [
             "'self'",
             "https://api.mapbox.com",
             "https://events.mapbox.com",
+            "https://www.youtube.com/"
         ],
         "object-src": "'none'",
         "style-src": [
             "'self'",
             "'unsafe-inline'",
+            "https://www.youtube.com/"
         ],
         "script-src": ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+         "frame-src": [
+            "'self'",
+            "https://www.youtube.com",  # Allow YouTube iframes
+            "https://youtube.com",
+            "https://www.youtube-nocookie.com"
+        ],
+        "frame-ancestors": ["'self'"],
     },
     "content_security_policy_nonce_in": ["script-src"],
     "force_https": False,
