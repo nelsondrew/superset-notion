@@ -60,7 +60,7 @@ const EditorContainer = styled.div`
   .ProseMirror {
     padding: 16px;
     min-height: 100vh;
-    padding-left: 4rem !important;
+    padding-left: 4.5rem !important;
     position: relative;
     background: ${props => props.$isDarkMode ? '#1A1B1E' : '#fff'};
     color: ${props => props.$isDarkMode ? '#fff' : '#1f2937'};

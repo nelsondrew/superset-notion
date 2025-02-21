@@ -200,8 +200,8 @@ const HoverIndicator = styled.div`
 `;
 
 const IconButton = styled.button`
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   padding: 4px;
   border: none;
   background: transparent;
@@ -340,11 +340,11 @@ export default function BlockNoteEditor({ component, hoveredPos, setHoveredPos, 
               destroyTooltipOnHide
             >
               <IconButton onClick={handleAdd} title="Add block">
-                <Plus size={16} />
+                <Plus size={32} />
               </IconButton>
             </Popover>
             <IconButton onMouseDown={handleDrag} title="Drag to move">
-              <GripVertical size={16} />
+              <GripVertical size={32} />
             </IconButton>
           </HoverIndicator>
         )}
