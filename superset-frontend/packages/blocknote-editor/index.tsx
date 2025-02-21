@@ -1,8 +1,9 @@
-import React, {  useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import styled from "styled-components";
 import 'tippy.js/dist/tippy.css';
 import TipTapEditor from "./components-tip-tap/TipTapEditor"
 import { useSelector} from 'react-redux';
+import { Plus, GripVertical } from 'lucide-react';
 
 const EditorContainer = styled.div`
   text-align: left;
@@ -154,17 +155,125 @@ const EditorContainer = styled.div`
   }
 `;
 
-export default function BlockNoteEditor({ component , hoveredPos , setHoveredPos , setHeadings , parentId }) {
+// Update HoverIndicator styling
+const HoverIndicator = styled.div`
+  position: absolute;
+  left: 0px;
+  display: flex;
+  gap: 4px;
+  /* background: #fff; */
+  /* border: 1px solid #eee; */
+  padding: 4px;
+  border-radius: 4px;
+  z-index: 50;
+  /* box-shadow: 0 2px 4px rgba(0,0,0,0.1); */
+`;
+
+const IconButton = styled.button`
+  width: 24px;
+  height: 24px;
+  padding: 4px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: #6B7280;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover {
+    background: #F3F4F6;
+    color: #111827;
+  }
+`;
+
+export default function BlockNoteEditor({ component, hoveredPos, setHoveredPos, setHeadings, parentId }) {
   const editMode = useSelector(state => state?.dashboardState?.editMode);
   const [editorContent, setEditorContent] = useState(null);
-  
-  
+  const [hoverInfo, setHoverInfo] = useState(null);
+  const editorRef = useRef(null);
 
+  const handleMouseMove = (event) => {
+    const editor = window.editor;
+    if (!editor?.view) return;
+
+    const pos = editor.view.posAtCoords({
+      left: event.clientX,
+      top: event.clientY
+    });
+
+    if (pos) {
+      const $pos = editor.state.doc.resolve(pos.pos);
+      const node = editor.state.doc.nodeAt(pos.pos);
+      let foundNode = node;
+      let depth = $pos.depth;
+      
+      while (depth > 0) {
+        const parentNode = $pos.node(depth);
+        if (
+          parentNode.type.name === 'chart' || 
+          parentNode.type.name === 'customVideo' ||
+          parentNode.type.name === 'customImage' ||
+          parentNode.isBlock
+        ) {
+          foundNode = parentNode;
+          break;
+        }
+        depth--;
+      }
+
+      if (foundNode) {
+        // Get coordinates of the node
+        const coords = editor.view.coordsAtPos(pos.pos);
+        
+        setHoverInfo({
+          type: foundNode.type.name,
+          position: pos.pos,
+          top: coords.top,
+          left: coords.left
+        });
+      }
+    }
+  };
+
+  const handleMouseLeave = () => {
+    setHoverInfo(null);
+  };
+
+  const handleAdd = () => {
+    console.log('Add clicked at position:', hoverInfo.position);
+  };
+
+  const handleDrag = (e) => {
+    e.preventDefault();
+    console.log('Drag started at position:', hoverInfo.position);
+  };
 
   return (
-    <EditorContainer className="blocknote-editor">
+    <EditorContainer 
+      ref={editorRef}
+      className="blocknote-editor"
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+    >
+      {hoverInfo && (
+        <HoverIndicator
+          style={{
+            position: 'absolute',
+            top: `${hoverInfo.top - 172.52 + 17}px`,
+          }}
+        >
+          <IconButton onClick={handleAdd} title="Add block">
+            <Plus size={16} />
+          </IconButton>
+          <IconButton onMouseDown={handleDrag} title="Drag to move">
+            <GripVertical size={16} />
+          </IconButton>
+        </HoverIndicator>
+      )}
       <TipTapEditor 
-        editMode={editMode} 
+        editMode={editMode}
         initialContent={editorContent}
         component={component}
         hoveredPos={hoveredPos}

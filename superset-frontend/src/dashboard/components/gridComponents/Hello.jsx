@@ -488,6 +488,10 @@ export default function Hello(props) {
       droppable
       disableDragDrop={isEditorFocused}
       acceptedChildren={[CHART_TYPE]}
+      style={{
+        paddingLeft: '3rem',
+        paddingRight: '3rem'
+      }}
     >
       {({ dragSourceRef }) => (
         <HelloDiv id={component?.id} ref={dragSourceRef}>
