@@ -14,6 +14,7 @@ const EditorContainer = styled.div`
   border: 1px solid #eee;
   border-radius: 4px;
   min-height: 200px;
+  position: relative;
 
   .ProseMirror {
     padding: 16px;
@@ -197,8 +198,10 @@ export default function BlockNoteEditor({ component, hoveredPos, setHoveredPos, 
   const [editorContent, setEditorContent] = useState(null);
   const [hoverInfo, setHoverInfo] = useState(null);
   const editorRef = useRef(null);
+  const [isOverPopup, setIsOverPopup] = useState(false);
 
   const handleMouseMove = (event) => {
+    if(isOverPopup) return;
     const editor = window.editor;
     if (!editor?.view) return;
 
@@ -241,9 +244,16 @@ export default function BlockNoteEditor({ component, hoveredPos, setHoveredPos, 
     }
   };
 
-  const handleMouseLeave = () => {
-    setHoverInfo(null);
+  const handleMouseLeave = (event) => {
+    // Only clear hover info if not over popup
+    if (!isOverPopup) {
+      setHoverInfo(null);
+    }
   };
+
+  useEffect(() => {
+    console.log(isOverPopup, "is over popup")
+  },[isOverPopup])
 
   const handleAdd = () => {
     const editor = window.editor;
@@ -261,6 +271,7 @@ export default function BlockNoteEditor({ component, hoveredPos, setHoveredPos, 
     const destroy = () => {
       popup?.[0].destroy();
       component?.destroy();
+      setIsOverPopup(false);
     };
 
     component = new ReactRenderer(AddBlockMenu, {
@@ -272,7 +283,9 @@ export default function BlockNoteEditor({ component, hoveredPos, setHoveredPos, 
             addBlockMenuRef.onKeyDown = methods.onKeyDown;
           }
         },
-        onClose: destroy
+        onClose: destroy,
+        onMouseEnter: () => setIsOverPopup(true),
+        onMouseLeave: () => setIsOverPopup(false)
       },
       editor,
     });
@@ -294,12 +307,19 @@ export default function BlockNoteEditor({ component, hoveredPos, setHoveredPos, 
       interactive: true,
       trigger: 'manual',
       placement: 'bottom-start',
+      onMount: () => setIsOverPopup(true),
+      onHide: () => setIsOverPopup(false)
     });
 
     popup[0].show();
 
     // Cleanup on editor blur
-    editor.on('blur', destroy);
+    editor.on('blur', (event) => {
+      // Only destroy if we're not over the popup
+      if (!isOverPopup) {
+        destroy();
+      }
+    });
   };
 
   const handleDrag = (e) => {
@@ -314,7 +334,7 @@ export default function BlockNoteEditor({ component, hoveredPos, setHoveredPos, 
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
     >
-      {hoverInfo && (
+      {editMode && hoverInfo && (
         <HoverIndicator
           style={{
             position: 'absolute',
