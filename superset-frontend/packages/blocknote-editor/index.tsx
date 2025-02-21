@@ -228,11 +228,13 @@ export default function BlockNoteEditor({ component, hoveredPos, setHoveredPos, 
   const [editorInstance, setEditorInstance] = useState(null)
 
   const handleMouseMove = (event) => {
-    if(showPopover) return;
+    if(showPopover) {
+      return;
+    }
+
     const editor = editorInstance;
     if (!editor?.view) return;
 
-    // Get editor container position
     const editorContainer = editorRef.current;
     if (!editorContainer) return;
     const containerRect = editorContainer.getBoundingClientRect();
@@ -242,9 +244,20 @@ export default function BlockNoteEditor({ component, hoveredPos, setHoveredPos, 
       top: event.clientY
     });
 
-    if (pos) {
+    if (!pos) {
+      setHoverInfo(null);
+      return;
+    }
+
+    try {
       const $pos = editor.state.doc.resolve(pos.pos);
       const node = editor.state.doc.nodeAt(pos.pos);
+      
+      if (!node) {
+        setHoverInfo(null);
+        return;
+      }
+
       let foundNode = node;
       let depth = $pos.depth;
       
@@ -263,17 +276,31 @@ export default function BlockNoteEditor({ component, hoveredPos, setHoveredPos, 
       }
 
       if (foundNode) {
-        // Get coordinates of the node
         const coords = editor.view.coordsAtPos(pos.pos);
         
-        // Calculate position relative to editor container
-        setHoverInfo({
-          type: foundNode.type.name,
-          position: pos.pos,
-          top: coords.top - containerRect.top,
-          left: coords.left - containerRect.left
+        setHoverInfo(prev => {
+          if (
+            !prev || 
+            prev.position !== pos.pos ||
+            prev.type !== foundNode.type.name ||
+            prev.top !== (coords.top - containerRect.top) ||
+            prev.left !== (coords.left - containerRect.left)
+          ) {
+            return {
+              type: foundNode.type.name,
+              position: pos.pos,
+              top: coords.top - containerRect.top,
+              left: coords.left - containerRect.left
+            };
+          }
+          return prev;
         });
+      } else {
+        setHoverInfo(null);
       }
+    } catch (error) {
+      console.error('Error in handleMouseMove:', error);
+      setHoverInfo(null);
     }
   };
 
@@ -301,6 +328,15 @@ export default function BlockNoteEditor({ component, hoveredPos, setHoveredPos, 
     e.preventDefault();
     console.log('Drag started at position:', hoverInfo.position);
   };
+
+  // Add cleanup on unmount
+  useEffect(() => {
+    return () => {
+      setHoverInfo(null);
+      setShowPopover(false);
+      setIsOverPopup(false);
+    };
+  }, []);
 
   return (
     <>
