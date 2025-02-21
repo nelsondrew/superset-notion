@@ -4,6 +4,10 @@ import 'tippy.js/dist/tippy.css';
 import TipTapEditor from "./components-tip-tap/TipTapEditor"
 import { useSelector} from 'react-redux';
 import { Plus, GripVertical } from 'lucide-react';
+import { renderToString } from 'react-dom/server';
+import tippy from 'tippy.js';
+import { ReactRenderer } from '@tiptap/react';
+import AddBlockMenu from './components-tip-tap/AddBlockMenu';
 
 const EditorContainer = styled.div`
   text-align: left;
@@ -242,7 +246,60 @@ export default function BlockNoteEditor({ component, hoveredPos, setHoveredPos, 
   };
 
   const handleAdd = () => {
-    console.log('Add clicked at position:', hoverInfo.position);
+    const editor = window.editor;
+    if (!editor || !hoverInfo) return;
+
+    const coords = editor.view.coordsAtPos(hoverInfo.position);
+
+    const addBlockMenuRef = {
+      onKeyDown: () => false,
+    };
+
+    let component;
+    let popup;
+
+    const destroy = () => {
+      popup?.[0].destroy();
+      component?.destroy();
+    };
+
+    component = new ReactRenderer(AddBlockMenu, {
+      props: {
+        editor,
+        position: hoverInfo.position,
+        onRef: (methods) => {
+          if (methods) {
+            addBlockMenuRef.onKeyDown = methods.onKeyDown;
+          }
+        },
+        onClose: destroy
+      },
+      editor,
+    });
+
+    popup = tippy('body', {
+      getReferenceClientRect: () => ({
+        top: coords.top,
+        bottom: coords.bottom,
+        left: coords.left - 60,
+        right: coords.right,
+        width: 0,
+        height: coords.bottom - coords.top,
+        x: coords.left,
+        y: coords.top,
+      }),
+      appendTo: () => document.body,
+      content: component.element,
+      showOnCreate: true,
+      interactive: true,
+      trigger: 'manual',
+      placement: 'bottom-start',
+    });
+
+    popup[0].show();
+
+    // Cleanup on editor blur
+    editor.on('blur', destroy);
   };
 
   const handleDrag = (e) => {
