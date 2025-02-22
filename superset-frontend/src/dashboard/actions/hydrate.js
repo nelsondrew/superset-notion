@@ -313,6 +313,7 @@ export const hydrateDashboard =
           activeTabs: activeTabs || dashboardState?.activeTabs || [],
           datasetsStatus:
             dashboardState?.datasetsStatus || ResourceStatus.Loading,
+          darkMode: false,
         },
         dashboardLayout,
       },

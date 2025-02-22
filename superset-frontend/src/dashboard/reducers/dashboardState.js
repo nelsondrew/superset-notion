@@ -50,6 +50,7 @@ import {
   SET_DASHBOARD_LABELS_COLORMAP_SYNCED,
   SET_DASHBOARD_SHARED_LABELS_COLORS_SYNCABLE,
   SET_DASHBOARD_SHARED_LABELS_COLORS_SYNCED,
+  TOGGLE_DARK_MODE,
 } from '../actions/dashboardState';
 import { HYDRATE_DASHBOARD } from '../actions/hydrate';
 
@@ -138,6 +139,10 @@ export default function dashboardStateReducer(state = {}, action) {
         updatedExpandedSlices[sliceId] = true;
       }
       return { ...state, expandedSlices: updatedExpandedSlices };
+    },
+    [TOGGLE_DARK_MODE]() {
+      const { darkModeBoolean } = action;
+      return {...state , darkMode : darkModeBoolean }
     },
     [ON_CHANGE]() {
       return { ...state, hasUnsavedChanges: true };

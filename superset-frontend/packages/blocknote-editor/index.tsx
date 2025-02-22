@@ -253,10 +253,7 @@ export default function BlockNoteEditor({ component, hoveredPos, setHoveredPos, 
       const $pos = editor.state.doc.resolve(pos.pos);
       const node = editor.state.doc.nodeAt(pos.pos);
       
-      if (!node) {
-        setHoverInfo(null);
-        return;
-      }
+      
 
       let foundNode = node;
       let depth = $pos.depth;

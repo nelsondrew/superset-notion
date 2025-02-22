@@ -31,7 +31,7 @@ import { CustomEmojiUploader } from './CustomEmojiUploader'
 import { CustomEmoji } from './extensions/CustomEmojiExtension'
 import { AddEmojiModal } from './AddEmojiModal'
 import { customEmojiStorage } from '../utils/customEmojiStorage'
-import { useDispatch } from 'react-redux'
+import { useDispatch, useSelector } from 'react-redux'
 import { updateComponents } from 'src/dashboard/actions/dashboardLayout'
 import { debounce } from 'lodash'
 import { Moon, Sun  } from 'lucide-react'
@@ -359,7 +359,7 @@ const CustomHeading = Heading.extend({
 export const TipTapEditor = ({ editMode, initialContent, component  , hoveredPos , setHoveredPos, setHeadings , parentId , setEditorInstance }) => {
   const [isMounted, setIsMounted] = useState(false)
   const [isEmojiModalOpen, setIsEmojiModalOpen] = useState(false)
-  const [isDarkMode, setIsDarkMode] = useState(false)
+  const isDarkMode = useSelector((state) => state?.dashboardState?.darkMode);
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
   const [comments, setComments] = useState({}) // Map of commentId -> array of comments
@@ -805,19 +805,6 @@ export const TipTapEditor = ({ editMode, initialContent, component  , hoveredPos
       editMode={editMode}
       $isDarkMode={isDarkMode}
     >
-      <ControlsContainer>
-        <ToggleSwitch $isDarkMode={isDarkMode}>
-          <input 
-            type="checkbox"
-            checked={isDarkMode}
-            onChange={toggleTheme}
-          />
-          <span>
-            <Moon className="icon moon" size={16} />
-            <Sun className="icon sun" size={16} />
-          </span>
-        </ToggleSwitch>
-      </ControlsContainer>
       <MenuBar style={{ display: editMode ? 'flex' : 'none' }} $isDarkMode={isDarkMode}>
         <Button
           onClick={() => editor.chain().focus().toggleBold().run()}

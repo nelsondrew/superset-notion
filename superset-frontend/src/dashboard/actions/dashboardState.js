@@ -1000,3 +1000,16 @@ export const updateDashboardLabelsColor = renderedChartIds => (_, getState) => {
     console.error('Failed to update colors for new charts and labels:', e);
   }
 };
+
+
+/**
+ *
+ * Manipulate the dark mode on Dashboards with pages.
+ *
+ * @param {*} darkMode - updatedDarkMode boolean
+ * @returns void
+ */
+export const TOGGLE_DARK_MODE = 'TOGGLE_DARK_MODE';
+export function toggleDarkMode(darkModeBoolean) {
+  return { type: TOGGLE_DARK_MODE, darkModeBoolean };
+}
