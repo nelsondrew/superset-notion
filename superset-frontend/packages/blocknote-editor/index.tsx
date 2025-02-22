@@ -3,12 +3,11 @@ import styled, { createGlobalStyle } from "styled-components";
 import 'tippy.js/dist/tippy.css';
 import TipTapEditor from "./components-tip-tap/TipTapEditor"
 import { useSelector} from 'react-redux';
-import { Plus, GripVertical } from 'lucide-react';
-import { renderToString } from 'react-dom/server';
-import tippy from 'tippy.js';
-import { ReactRenderer } from '@tiptap/react';
+import { Plus, GripVertical, Trash2, Palette, Check } from 'lucide-react';
 import AddBlockMenu from './components-tip-tap/AddBlockMenu';
-import { Popover } from 'antd';
+import { Popover, Menu } from 'antd';
+import { DecorationSet, Decoration } from 'prosemirror-view';
+import { Plugin } from 'prosemirror-state';
 
 const GlobalPopoverStyles = createGlobalStyle`
   .ant-popover-inner {
@@ -218,6 +217,100 @@ const IconButton = styled.button`
   }
 `;
 
+// Add color options
+const TEXT_COLORS = [
+  { name: 'Default', color: '#FFFFFF', hasCheck: true },
+  { name: 'Gray', color: '#9CA3AF' },
+  { name: 'Brown', color: '#A47148' },
+  { name: 'Red', color: '#EF4444' },
+  { name: 'Orange', color: '#F97316' },
+  { name: 'Yellow', color: '#EAB308' },
+  { name: 'Green', color: '#22C55E' },
+  { name: 'Blue', color: '#3B82F6' },
+  { name: 'Purple', color: '#A855F7' },
+  { name: 'Pink', color: '#EC4899' },
+];
+
+const BACKGROUND_COLORS = [
+  { name: 'Default', color: 'transparent', hasCheck: true },
+  { name: 'Gray', color: '#6B7280' },
+  { name: 'Brown', color: '#92400E' },
+  { name: 'Red', color: '#991B1B' },
+  { name: 'Orange', color: '#9A3412' },
+  { name: 'Yellow', color: '#854D0E' },
+  { name: 'Green', color: '#166534' },
+  { name: 'Blue', color: '#1E40AF' },
+  { name: 'Purple', color: '#6B21A8' },
+  { name: 'Pink', color: '#9D174D' },
+];
+
+// Update the styled menu
+const StyledMenu = createGlobalStyle`
+  .ant-menu {
+    background: #1a1a1a !important;
+    padding: 4px;
+    min-width: 220px;
+    border-radius: 8px;
+  }
+
+  .ant-menu-submenu-title,
+  .ant-menu-item {
+    color: #ffffff !important;
+    padding: 8px 12px !important;
+    height: auto !important;
+    line-height: 1.2 !important;
+    margin: 0 !important;
+    border-radius: 4px;
+    display: flex !important;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+
+    &:hover {
+      background: #2d2d2d !important;
+      color: #ffffff !important;
+    }
+
+    svg {
+      width: 16px;
+      height: 16px;
+    }
+  }
+
+  .ant-menu-submenu-popup {
+    .ant-menu {
+      background: #1a1a1a !important;
+    }
+  }
+
+  .color-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    .color-letter {
+      width: 20px;
+      height: 20px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 500;
+    }
+
+    .check-icon {
+      margin-left: auto;
+    }
+  }
+
+  .color-section-title {
+    color: #6B7280;
+    font-size: 12px;
+    padding: 8px 12px 4px;
+    font-weight: 500;
+  }
+`;
+
 export default function BlockNoteEditor({ component, hoveredPos, setHoveredPos, setHeadings, parentId }) {
   const editMode = useSelector(state => state?.dashboardState?.editMode);
   const [editorContent, setEditorContent] = useState(null);
@@ -225,10 +318,96 @@ export default function BlockNoteEditor({ component, hoveredPos, setHoveredPos, 
   const editorRef = useRef(null);
   const [isOverPopup, setIsOverPopup] = useState(false);
   const [showPopover, setShowPopover] = useState(false);
-  const [editorInstance, setEditorInstance] = useState(null)
+  const [showDragMenu, setShowDragMenu] = useState(false);
+  const [editorInstance, setEditorInstance] = useState(null);
+  
+  // Add color state here
+  const [selectedTextColor, setSelectedTextColor] = useState('Default');
+  const [selectedBgColor, setSelectedBgColor] = useState('Default');
+
+  // Move ColorMenu inside component
+  const ColorMenu = () => (
+    <Menu>
+      <div className="color-section-title">Text</div>
+      {TEXT_COLORS.map(color => (
+        <Menu.Item 
+          key={`text-${color.name.toLowerCase()}`}
+          onClick={() => {
+            setSelectedTextColor(color.name);
+            console.log('Selected text color:', color.name);
+          }}
+        >
+          <div className="color-item">
+            <span 
+              className="color-letter" 
+              style={{ color: color.color }}
+            >
+              A
+            </span>
+            {color.name}
+            {selectedTextColor === color.name && (
+              <Check size={16} className="check-icon" />
+            )}
+          </div>
+        </Menu.Item>
+      ))}
+      <div className="color-section-title">Background</div>
+      {BACKGROUND_COLORS.map(color => (
+        <Menu.Item 
+          key={`bg-${color.name.toLowerCase()}`}
+          onClick={() => {
+            setSelectedBgColor(color.name);
+            console.log('Selected background color:', color.name);
+          }}
+        >
+          <div className="color-item">
+            <span 
+              className="color-letter" 
+              style={{ 
+                background: color.color === 'transparent' ? '#1a1a1a' : color.color,
+                border: color.color === 'transparent' ? '1px solid #4A4A4A' : 'none'
+              }}
+            >
+              A
+            </span>
+            {color.name}
+            {selectedBgColor === color.name && (
+              <Check size={16} className="check-icon" />
+            )}
+          </div>
+        </Menu.Item>
+      ))}
+    </Menu>
+  );
+
+  // Move DragMenu inside component too
+  const DragMenu = () => (
+    <Menu>
+      <Menu.Item key="delete">
+        <Trash2 size={16} />
+        Delete
+      </Menu.Item>
+      <Menu.SubMenu 
+        key="colors" 
+        title={
+          <>
+            <Palette size={16} />
+            Colors
+          </>
+        }
+        popupOffset={[0, -4]}
+      >
+        <ColorMenu />
+      </Menu.SubMenu>
+    </Menu>
+  );
+
+  useEffect(() => {
+    setShowDragMenu(false);
+  },[selectedBgColor , selectedTextColor])
 
   const handleMouseMove = (event) => {
-    if(showPopover) {
+    if(showPopover || showDragMenu) {
       return;
     }
 
@@ -287,7 +466,8 @@ export default function BlockNoteEditor({ component, hoveredPos, setHoveredPos, 
               type: foundNode.type.name,
               position: pos.pos,
               top: coords.top - containerRect.top,
-              left: coords.left - containerRect.left
+              left: coords.left - containerRect.left,
+              node : foundNode
             };
           }
           return prev;
@@ -326,6 +506,11 @@ export default function BlockNoteEditor({ component, hoveredPos, setHoveredPos, 
     console.log('Drag started at position:', hoverInfo.position);
   };
 
+  const handleDragMenuClose = () => {
+    setShowDragMenu(false);
+    setIsOverPopup(false);
+  };
+
   // Add cleanup on unmount
   useEffect(() => {
     return () => {
@@ -335,9 +520,12 @@ export default function BlockNoteEditor({ component, hoveredPos, setHoveredPos, 
     };
   }, []);
 
+  console.log(hoverInfo, "hoverinfo")
+
   return (
     <>
       <GlobalPopoverStyles />
+      <StyledMenu />
       <EditorContainer 
         ref={editorRef}
         className="blocknote-editor"
@@ -376,9 +564,26 @@ export default function BlockNoteEditor({ component, hoveredPos, setHoveredPos, 
                 <Plus size={32} />
               </IconButton>
             </Popover>
-            <IconButton onMouseDown={handleDrag} title="Drag to move">
-              <GripVertical size={32} />
-            </IconButton>
+            <Popover
+              visible={showDragMenu}
+              onVisibleChange={(visible) => {
+                if (!visible) {
+                  handleDragMenuClose();
+                }
+                setIsOverPopup(visible);
+              }}
+              content={<DragMenu />}
+              trigger="click"
+              placement="bottomLeft"
+              destroyTooltipOnHide
+            >
+              <IconButton 
+                onClick={() => setShowDragMenu(true)} 
+                title="More options"
+              >
+                <GripVertical size={32} />
+              </IconButton>
+            </Popover>
           </HoverIndicator>
         )}
         <TipTapEditor 
