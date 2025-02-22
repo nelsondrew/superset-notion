@@ -320,6 +320,7 @@ export default function BlockNoteEditor({ component, hoveredPos, setHoveredPos, 
   const [showPopover, setShowPopover] = useState(false);
   const [showDragMenu, setShowDragMenu] = useState(false);
   const [editorInstance, setEditorInstance] = useState(null);
+  const editorInstanceRef= useRef(null);
   
   // Add color state here
   const [selectedTextColor, setSelectedTextColor] = useState('Default');
@@ -334,7 +335,9 @@ export default function BlockNoteEditor({ component, hoveredPos, setHoveredPos, 
           key={`text-${color.name.toLowerCase()}`}
           onClick={() => {
             setSelectedTextColor(color.name);
+            console.log(editorRef)
             console.log('Selected text color:', color.name);
+            editorInstanceRef?.current?.updateNodeAtPosition(hoverInfo?.position, { 'data[text-color]' : color.name})
           }}
         >
           <div className="color-item">
@@ -587,6 +590,7 @@ export default function BlockNoteEditor({ component, hoveredPos, setHoveredPos, 
           </HoverIndicator>
         )}
         <TipTapEditor 
+          ref={editorInstanceRef}
           editMode={editMode}
           initialContent={editorContent}
           component={component}

@@ -21,7 +21,7 @@ import Typography from '@tiptap/extension-typography'
 import { SlashCommand, getSuggestionItems, renderItems } from './extensions/SlashCommand'
 import styled from 'styled-components'
 import 'tippy.js/dist/tippy.css'
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useState, useCallback, useRef, useImperativeHandle, forwardRef } from 'react'
 import { ChartExtension } from './extensions/ChartExtension'
 import { ChartBubbleMenu } from './ChartBubbleMenu'
 import { EmojiSuggestion } from './extensions/EmojiSuggestion'
@@ -49,6 +49,7 @@ import { Plugin } from 'prosemirror-state'
 import { UniqueHeadingExtension } from './extensions/UniqueHeadingExtension'
 import { VideoExtension } from './extensions/VideoExtension'
 import { ImageExtension } from './extensions/ImageExtension'
+import { DecorationExtension } from './extensions/DecorationExtension'
 
 const EditorContainer = styled.div`
   background: ${props => props.$isDarkMode ? '#1A1B1E' : '#fff'};
@@ -356,7 +357,7 @@ const CustomHeading = Heading.extend({
   }
 })
 
-export const TipTapEditor = ({ editMode, initialContent, component  , hoveredPos , setHoveredPos, setHeadings , parentId , setEditorInstance }) => {
+export const TipTapEditor = forwardRef(({ editMode, initialContent, component  , hoveredPos , setHoveredPos, setHeadings , parentId , setEditorInstance }, ref) => {
   const [isMounted, setIsMounted] = useState(false)
   const [isEmojiModalOpen, setIsEmojiModalOpen] = useState(false)
   const isDarkMode = useSelector((state) => state?.dashboardState?.darkMode);
@@ -369,6 +370,8 @@ export const TipTapEditor = ({ editMode, initialContent, component  , hoveredPos
   
   const id = component?.id
   const dispatch = useDispatch()
+
+
 
   // Add state for popover portal container
   const [portalContainer, setPortalContainer] = useState(null)
@@ -552,6 +555,9 @@ export const TipTapEditor = ({ editMode, initialContent, component  , hoveredPos
       Comment,
       VideoExtension,
       ImageExtension,
+      DecorationExtension.configure({
+        initialDecorations: [10,34]// Array of positions from storage
+      }),
     ],
     editable: editMode,
     injectCSS: false,
@@ -614,6 +620,34 @@ export const TipTapEditor = ({ editMode, initialContent, component  , hoveredPos
       window.editor = null;
     }
   })
+
+  useImperativeHandle(ref, () => ({
+    updateNodeAtPosition(pos, newAttrs) {
+      console.log('updateNodeAtPosition called with pos:', pos);
+      
+      // Make sure editor exists and pos is valid
+      if (!editor) {
+        console.log('Editor not initialized');
+        return;
+      }
+      
+      if (pos < 0 || pos > editor.state.doc.content.size) {
+        console.log('Invalid position:', pos, 'doc size:', editor.state.doc.content.size);
+        return;
+      }
+
+      // Add decoration and run the command
+      console.log('Applying decoration...');
+      editor.chain()
+        .focus()
+        .addDecoration(pos)
+        .run();
+      console.log('Decoration command executed');
+    },
+    getData() {
+      return "Some data from Child";
+    }
+  }));
 
   // Also set it when editor instance changes
   useEffect(() => {
@@ -718,6 +752,34 @@ export const TipTapEditor = ({ editMode, initialContent, component  , hoveredPos
     }
   }, [])
 
+  // Save decorations when they change
+  useEffect(() => {
+    if (!editor) return;
+
+    const saveDecorations = () => {
+      const currentDecorations = editor.commands.getDecorations();
+      // Save to your storage (localStorage, Redux, etc.)
+      localStorage.setItem('decoratedPositions', JSON.stringify(currentDecorations));
+    };
+
+    // Add a document change handler
+    editor.on('update', saveDecorations);
+    
+    return () => {
+      editor.off('update', saveDecorations);
+    };
+  }, [editor]);
+
+  // Load saved decorations on mount
+  useEffect(() => {
+    const savedDecorations = JSON.parse(localStorage.getItem('decoratedPositions') || '[]');
+    if (editor && savedDecorations.length > 0) {
+      savedDecorations.forEach(pos => {
+        editor.commands.addDecoration(pos);
+      });
+    }
+  }, [editor]);
+
   // Don't render until client-side
   if (!isMounted) {
     return null;
@@ -797,6 +859,15 @@ export const TipTapEditor = ({ editMode, initialContent, component  , hoveredPos
     }
     setCommentAnchorEl(anchorEl)
   }
+
+  // Example of how to use the decoration commands:
+  const addDecorationAtPosition = (pos) => {
+    editor?.commands.addDecoration(pos);
+  };
+
+  const removeAllDecorations = () => {
+    editor?.commands.removeDecorations();
+  };
 
   return (
     <EditorContainer 
@@ -1040,6 +1111,6 @@ export const TipTapEditor = ({ editMode, initialContent, component  , hoveredPos
       <EditorContent editor={editor} />
     </EditorContainer>
   );
-};
+});
 
 export default TipTapEditor;  

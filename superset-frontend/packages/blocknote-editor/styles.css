@@ -1,0 +1,12 @@
+.highlight-node {
+  background-color: rgba(255, 213, 0, 0.15) !important;
+  transition: background-color 0.3s ease;
+}
+
+.decoration-marker {
+  z-index: 1;
+}
+
+.ProseMirror {
+  position: relative;
+} 
