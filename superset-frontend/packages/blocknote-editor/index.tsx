@@ -326,6 +326,9 @@ export default function BlockNoteEditor({ component, hoveredPos, setHoveredPos, 
   const [selectedTextColor, setSelectedTextColor] = useState('Default');
   const [selectedBgColor, setSelectedBgColor] = useState('Default');
 
+
+  
+
   // Move ColorMenu inside component
   const ColorMenu = () => (
     <Menu>
@@ -334,10 +337,10 @@ export default function BlockNoteEditor({ component, hoveredPos, setHoveredPos, 
         <Menu.Item 
           key={`text-${color.name.toLowerCase()}`}
           onClick={() => {
-            setSelectedTextColor(color.name);
+            // setSelectedTextColor(color.name);
             console.log(editorRef)
             console.log('Selected text color:', color.name);
-            editorInstanceRef?.current?.updateNodeAtPosition(hoverInfo?.position, { 'data[text-color]' : color.name})
+            editorInstanceRef?.current?.updateNodeAtPosition(hoverInfo?.position, color.name)
           }}
         >
           <div className="color-item">
@@ -359,8 +362,10 @@ export default function BlockNoteEditor({ component, hoveredPos, setHoveredPos, 
         <Menu.Item 
           key={`bg-${color.name.toLowerCase()}`}
           onClick={() => {
-            setSelectedBgColor(color.name);
+            // setSelectedBgColor(color.name);
             console.log('Selected background color:', color.name);
+            editorInstanceRef?.current?.updateNodeAtPosition(hoverInfo?.position, color.name, true)
+
           }}
         >
           <div className="color-item">
@@ -523,7 +528,14 @@ export default function BlockNoteEditor({ component, hoveredPos, setHoveredPos, 
     };
   }, []);
 
-  console.log(hoverInfo, "hoverinfo")
+  useEffect(() => {
+    console.log(hoverInfo?.node, "hover node")
+    if(hoverInfo?.node) {
+      setSelectedTextColor(hoverInfo?.node?.attrs['data-text-color']);
+      setSelectedBgColor(hoverInfo?.node?.attrs['data-bg-color'])
+    }
+   
+  },[hoverInfo])
 
   return (
     <>

@@ -34,7 +34,7 @@ import { customEmojiStorage } from '../utils/customEmojiStorage'
 import { useDispatch, useSelector } from 'react-redux'
 import { updateComponents } from 'src/dashboard/actions/dashboardLayout'
 import { debounce } from 'lodash'
-import { Moon, Sun  } from 'lucide-react'
+import { Moon, Sun } from 'lucide-react'
 import { TabIndent } from './extensions/TabIndentExtension'
 import { exportToDocx } from '../utils/documentExport'
 import { Comment } from './extensions/CommentExtension'
@@ -50,6 +50,7 @@ import { UniqueHeadingExtension } from './extensions/UniqueHeadingExtension'
 import { VideoExtension } from './extensions/VideoExtension'
 import { ImageExtension } from './extensions/ImageExtension'
 import { DecorationExtension } from './extensions/DecorationExtension'
+import { CustomParagraphExtension } from './extensions/CustomParagraphExtension'
 
 const EditorContainer = styled.div`
   background: ${props => props.$isDarkMode ? '#1A1B1E' : '#fff'};
@@ -81,52 +82,116 @@ const EditorContainer = styled.div`
       margin: 0;
       position: relative;
       padding-left: 2rem;
-    }
-    
-    p.is-empty::before,
-    h1.is-empty::before,
-    h2.is-empty::before {
-      color: ${props => props.$isDarkMode ? '#6B7280' : '#9ca3af'};
-      content: attr(data-placeholder);
-      float: left;
-      height: 0;
-      pointer-events: none;
-      position: absolute;
-      font-style: italic;
-    }
 
-    p.is-empty::before {
-      margin-left: 2rem;
-    }
-    
-    code {
-      background-color: ${props => props.$isDarkMode ? '#2D2D2D' : '#f3f4f6'};
-      color: ${props => props.$isDarkMode ? '#fff' : '#111827'};
-    }
-    
-    pre {
-      background: ${props => props.$isDarkMode ? '#2D2D2D' : '#1f2937'};
-      color: ${props => props.$isDarkMode ? '#fff' : '#f3f4f6'};
-    }
-
-    table {
-      td, th {
-        border-color: ${props => props.$isDarkMode ? '#2D2D2D' : '#ced4da'};
-        color: ${props => props.$isDarkMode ? '#fff' : 'inherit'};
-        }
-
-      th {
-        background-color: ${props => props.$isDarkMode ? '#2D2D2D' : '#f8f9fa'};
+      /* Text Colors */
+      &[data-text-color="Default"] {
+        color: ${props => props.$isDarkMode ? '#FFFFFF' : '#1f2937'};
       }
-    }
+      &[data-text-color="Gray"] {
+        color: #9CA3AF;
+      }
+      &[data-text-color="Brown"] {
+        color: #A47148;
+      }
+      &[data-text-color="Red"] {
+        color: #EF4444;
+      }
+      &[data-text-color="Orange"] {
+        color: #F97316;
+      }
+      &[data-text-color="Yellow"] {
+        color: #EAB308;
+      }
+      &[data-text-color="Green"] {
+        color: #22C55E;
+      }
+      &[data-text-color="Blue"] {
+        color: #3B82F6;
+      }
+      &[data-text-color="Purple"] {
+        color: #A855F7;
+      }
+      &[data-text-color="Pink"] {
+        color: #EC4899;
+      }
 
-    .comment-highlight {
-      background-color: #fef08a;
-      cursor: pointer;
-    }
+      /* Background Colors */
+      &[data-bg-color="Default"] {
+        background-color: transparent;
+      }
+      &[data-bg-color="Gray"] {
+        background-color: rgba(107, 114, 128, 0.6);
+      }
+      &[data-bg-color="Brown"] {
+        background-color: rgba(146, 64, 14, 0.6);
+      }
+      &[data-bg-color="Red"] {
+        background-color: rgba(153, 27, 27, 0.6);
+      }
+      &[data-bg-color="Orange"] {
+        background-color: rgba(154, 52, 18, 0.6);
+      }
+      &[data-bg-color="Yellow"] {
+        background-color: rgba(133, 77, 14, 0.6);
+      }
+      &[data-bg-color="Green"] {
+        background-color: rgba(22, 101, 52, 0.6);
+      }
+      &[data-bg-color="Blue"] {
+        background-color: rgba(30, 64, 175, 0.6);
+      }
+      &[data-bg-color="Purple"] {
+        background-color: rgba(107, 33, 168, 0.6);
+      }
+      &[data-bg-color="Pink"] {
+        background-color: rgba(157, 23, 77, 0.6);
+      }
 
-    .comment-mark {
-      background-color: #fef08a;
+      p.is-empty::before,
+      h1.is-empty::before,
+      h2.is-empty::before {
+        color: ${props => props.$isDarkMode ? '#6B7280' : '#9ca3af'};
+        content: attr(data-placeholder);
+        float: left;
+        height: 0;
+        pointer-events: none;
+        position: absolute;
+        font-style: italic;
+      }
+
+      p.is-empty::before {
+        margin-left: 2rem;
+      }
+      
+      code {
+        background-color: ${props => props.$isDarkMode ? '#2D2D2D' : '#f3f4f6'};
+        color: ${props => props.$isDarkMode ? '#fff' : '#111827'};
+      }
+      
+      pre {
+        background: ${props => props.$isDarkMode ? '#2D2D2D' : '#1f2937'};
+        color: ${props => props.$isDarkMode ? '#fff' : '#f3f4f6'};
+      }
+
+      table {
+        td, th {
+          border-color: ${props => props.$isDarkMode ? '#2D2D2D' : '#ced4da'};
+          color: ${props => props.$isDarkMode ? '#fff' : 'inherit'};
+          }
+
+        th {
+          background-color: ${props => props.$isDarkMode ? '#2D2D2D' : '#f8f9fa'};
+        }
+      }
+
+      .comment-highlight {
+        background-color: #fef08a;
+        cursor: pointer;
+      }
+
+      .comment-mark {
+        background-color: #fef08a;
+      }
     }
   }
 `
@@ -357,7 +422,7 @@ const CustomHeading = Heading.extend({
   }
 })
 
-export const TipTapEditor = forwardRef(({ editMode, initialContent, component  , hoveredPos , setHoveredPos, setHeadings , parentId , setEditorInstance }, ref) => {
+export const TipTapEditor = forwardRef(({ editMode, initialContent, component, hoveredPos, setHoveredPos, setHeadings, parentId, setEditorInstance }, ref) => {
   const [isMounted, setIsMounted] = useState(false)
   const [isEmojiModalOpen, setIsEmojiModalOpen] = useState(false)
   const isDarkMode = useSelector((state) => state?.dashboardState?.darkMode);
@@ -366,10 +431,11 @@ export const TipTapEditor = forwardRef(({ editMode, initialContent, component  ,
   const [comments, setComments] = useState({}) // Map of commentId -> array of comments
   const [activeCommentMark, setActiveCommentMark] = useState(null)
   const [commentAnchorEl, setCommentAnchorEl] = useState(null)
-  // const [hoveredPos, setHoveredPos] = useState(null)
+
   
   const id = component?.id
   const dispatch = useDispatch()
+
 
 
 
@@ -466,7 +532,7 @@ export const TipTapEditor = forwardRef(({ editMode, initialContent, component  ,
   }
 
   const updateEditorComponentMeta = (editorJsonContent) => {
-    if(component) {
+    if (component) {
       dispatch(
         updateComponents({
           [component?.id]: {
@@ -487,7 +553,9 @@ export const TipTapEditor = forwardRef(({ editMode, initialContent, component  ,
     extensions: [
       StarterKit.configure({
         heading: false,
+        paragraph: false,
       }),
+      CustomParagraphExtension,
       UniqueHeadingExtension.configure({
         setHeadings: setHeadings,
       }),
@@ -555,9 +623,6 @@ export const TipTapEditor = forwardRef(({ editMode, initialContent, component  ,
       Comment,
       VideoExtension,
       ImageExtension,
-      DecorationExtension.configure({
-        initialDecorations: [10,34]// Array of positions from storage
-      }),
     ],
     editable: editMode,
     injectCSS: false,
@@ -622,7 +687,7 @@ export const TipTapEditor = forwardRef(({ editMode, initialContent, component  ,
   })
 
   useImperativeHandle(ref, () => ({
-    updateNodeAtPosition(pos, newAttrs) {
+    updateNodeAtPosition(pos, color , isBackground) {
       console.log('updateNodeAtPosition called with pos:', pos);
       
       // Make sure editor exists and pos is valid
@@ -636,13 +701,24 @@ export const TipTapEditor = forwardRef(({ editMode, initialContent, component  ,
         return;
       }
 
-      // Add decoration and run the command
-      console.log('Applying decoration...');
+      // Get the node at position
+      const node = editor.state.doc.nodeAt(pos);
+      // if (!node || node.type.name !== 'paragraph') {
+      //   console.log('No paragraph node found at position:', pos);
+      //   return;
+      // }
+
       editor.chain()
         .focus()
-        .addDecoration(pos)
+        .command(({ tr }) => {
+          // Update the node attributes
+          tr.setNodeMarkup(pos, null, {
+            ...node.attrs,
+            [isBackground ? 'data-bg-color': 'data-text-color']: color
+          });
+          return true;
+        })
         .run();
-      console.log('Decoration command executed');
     },
     getData() {
       return "Some data from Child";
@@ -752,33 +828,6 @@ export const TipTapEditor = forwardRef(({ editMode, initialContent, component  ,
     }
   }, [])
 
-  // Save decorations when they change
-  useEffect(() => {
-    if (!editor) return;
-
-    const saveDecorations = () => {
-      const currentDecorations = editor.commands.getDecorations();
-      // Save to your storage (localStorage, Redux, etc.)
-      localStorage.setItem('decoratedPositions', JSON.stringify(currentDecorations));
-    };
-
-    // Add a document change handler
-    editor.on('update', saveDecorations);
-    
-    return () => {
-      editor.off('update', saveDecorations);
-    };
-  }, [editor]);
-
-  // Load saved decorations on mount
-  useEffect(() => {
-    const savedDecorations = JSON.parse(localStorage.getItem('decoratedPositions') || '[]');
-    if (editor && savedDecorations.length > 0) {
-      savedDecorations.forEach(pos => {
-        editor.commands.addDecoration(pos);
-      });
-    }
-  }, [editor]);
 
   // Don't render until client-side
   if (!isMounted) {
