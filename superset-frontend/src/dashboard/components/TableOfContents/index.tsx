@@ -117,19 +117,35 @@ const TOCItem = memo(({
   item: TOCItemData; 
   isActive: boolean; 
   onClick: (id: string) => void;
-}) => (
-  <StyledTOCItem
-    depth={item.depth}
-    isActive={isActive}
-    onClick={() => onClick(item.id)}
-  >
-    {item.depth === 0 && <FileText size={16} />}
-    <div className="title-container">
-      <span className="title">{item.title}</span>
-      <div className="dots" />
-    </div>
-  </StyledTOCItem>
-));
+}) => {
+  // Helper function to parse HTML content and check if it's empty
+  const parseHTML = (html: string) => {
+    const div = document.createElement('div');
+    div.innerHTML = html;
+    const text = div.textContent || div.innerText || '';
+    // Remove zero-width spaces and trim
+    const cleaned = text.replace(/[\u200B-\u200D\uFEFF]/g, '').trim();
+    return cleaned;
+  };
+
+  // Skip rendering if title is empty or only contains special characters
+  const parsedTitle = parseHTML(item.title);
+  if (!parsedTitle) return null;
+
+  return (
+    <StyledTOCItem
+      depth={item.depth}
+      isActive={isActive}
+      onClick={() => onClick(item.id)}
+    >
+      {item.depth === 0 && <FileText size={16} />}
+      <div className="title-container">
+        <span className="title">{parsedTitle}</span>
+        <div className="dots" />
+      </div>
+    </StyledTOCItem>
+  );
+});
 
 const TOCContainer = styled.div`
   position: absolute;
@@ -164,10 +180,19 @@ interface TOCItemData {
 const getOrderedHeadings = (pagesData: Record<string, { index: number; headings: string[] }>) => {
   if (!pagesData) return [];
   
-  // Helper function to check if string contains HTML tags
-  const containsHTMLTags = (str: string) => {
-    const htmlTagRegex = /<[^>]*>/;
-    return htmlTagRegex.test(str);
+  // Helper function to check if string is empty or only contains whitespace/special chars
+  const isEmptyOrSpecialChars = (str: string) => {
+    // Remove HTML entities like &nbsp;
+    const withoutEntities = str.replace(/&[a-zA-Z0-9]+;/g, '');
+    // Remove HTML tags
+    const withoutTags = withoutEntities.replace(/<[^>]*>/g, '');
+    // Remove zero-width spaces and other special characters
+    const trimmed = withoutTags
+      .replace(/[\u200B-\u200D\uFEFF]/g, '') // Remove zero-width spaces
+      .replace(/\s+/g, ' ') // Normalize whitespace
+      .trim();
+    // Check if anything meaningful remains
+    return trimmed.length === 0;
   };
   
   // Process all operations in a single pass
@@ -178,12 +203,15 @@ const getOrderedHeadings = (pagesData: Record<string, { index: number; headings:
       const element = document.getElementById(id);
       if (!element || !element.innerHTML) return null;
       
-      // Skip if innerHTML contains HTML tags
-      if (containsHTMLTags(element.innerHTML)) return null;
+      // Skip if content is empty or only contains special characters
+      const cleanContent = element.innerHTML
+        .replace(/[\u200B-\u200D\uFEFF]/g, '')
+        .trim();
+      if (isEmptyOrSpecialChars(cleanContent)) return null;
       
       return {
         id,
-        title: element.innerHTML,
+        title: cleanContent,
         depth: element.tagName === 'H1' ? 0 : 1,
       };
     })
@@ -275,14 +303,16 @@ const TableOfContents = memo(({ topOffset = 0 }: TableOfContentsProps) => {
             <h2>{t('Table of contents')}</h2>
           </TOCHeader>
           <TOCList>
-            {toc.map(item => (
-              <TOCItem
-                key={item.id}
-                item={item}
-                isActive={activeId === item.id}
-                onClick={handleTOCItemClick}
-              />
-            ))}
+            {toc
+              .map(item => (
+                <TOCItem
+                  key={item.id}
+                  item={item}
+                  isActive={activeId === item.id}
+                  onClick={handleTOCItemClick}
+                />
+              ))
+              .filter(Boolean)}
           </TOCList>
         </TOCContent>
       </TOCContainer>
