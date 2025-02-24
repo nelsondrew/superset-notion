@@ -391,7 +391,9 @@ export default function BlockNoteEditor({ component, hoveredPos, setHoveredPos, 
   // Move DragMenu inside component too
   const DragMenu = () => (
     <Menu>
-      <Menu.Item key="delete">
+      <Menu.Item onClick={() => {
+        editorInstanceRef.current.deleteNodeAtPosition(hoverInfo?.position);
+      }} key="delete">
         <Trash2 size={16} />
         Delete
       </Menu.Item>

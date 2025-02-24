@@ -687,7 +687,7 @@ export const TipTapEditor = forwardRef(({ editMode, initialContent, component, h
   })
 
   useImperativeHandle(ref, () => ({
-    updateNodeAtPosition(pos, color , isBackground) {
+    updateNodeAtPosition(pos, color, isBackground) {
       console.log('updateNodeAtPosition called with pos:', pos);
       
       // Make sure editor exists and pos is valid
@@ -703,10 +703,6 @@ export const TipTapEditor = forwardRef(({ editMode, initialContent, component, h
 
       // Get the node at position
       const node = editor.state.doc.nodeAt(pos);
-      // if (!node || node.type.name !== 'paragraph') {
-      //   console.log('No paragraph node found at position:', pos);
-      //   return;
-      // }
 
       editor.chain()
         .focus()
@@ -720,9 +716,40 @@ export const TipTapEditor = forwardRef(({ editMode, initialContent, component, h
         })
         .run();
     },
-    getData() {
-      return "Some data from Child";
-    }
+
+    deleteNodeAtPosition(pos) {      
+      // Make sure editor exists and pos is valid
+      if (!editor) {
+        console.log('Editor not initialized');
+        return;
+      }
+      
+      if (pos < 0 || pos > editor.state.doc.content.size) {
+        console.log('Invalid position:', pos, 'doc size:', editor.state.doc.content.size);
+        return;
+      }
+
+      editor.chain()
+        .focus()
+        .command(({ tr }) => {
+          // Create an empty paragraph node
+          const emptyParagraph = editor.schema.nodes.paragraph.create({
+            'data-text-color': 'Default',
+            'data-bg-color': 'Default'
+          });
+
+          // Get the node size to properly replace it
+          const node = tr.doc.nodeAt(pos);
+          if (!node) return false;
+
+          // Replace the node with empty paragraph
+          tr.replaceWith(pos, pos + node.nodeSize, emptyParagraph);
+          
+          return true;
+        })
+        .run();
+    },
+
   }));
 
   // Also set it when editor instance changes
