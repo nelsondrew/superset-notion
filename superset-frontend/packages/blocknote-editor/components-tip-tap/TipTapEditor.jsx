@@ -9,7 +9,6 @@ import Link from '@tiptap/extension-link'
 import Placeholder from '@tiptap/extension-placeholder'
 import Subscript from '@tiptap/extension-subscript'
 import Superscript from '@tiptap/extension-superscript'
-import Table from '@tiptap/extension-table'
 import TableCell from '@tiptap/extension-table-cell'
 import TableHeader from '@tiptap/extension-table-header'
 import TableRow from '@tiptap/extension-table-row'
@@ -43,6 +42,7 @@ import { CommentsThread } from './CommentsThread'
 import { v4 as uuidv4 } from 'uuid'
 import { createPortal } from 'react-dom'
 import { DecorationSet, Decoration } from 'prosemirror-view'
+import { CustomTable } from './extensions/CustomTable'
 
 const EditorContainer = styled.div`
   background: ${props => props.$isDarkMode ? '#1A1B1E' : '#fff'};
@@ -370,7 +370,7 @@ export const TipTapEditor = ({ editMode, initialContent, component  , hoveredPos
       }),
       Subscript,
       Superscript,
-      Table.configure({
+      CustomTable.configure({
         resizable: true,
         HTMLAttributes: {
           class: 'my-custom-table',
@@ -615,7 +615,55 @@ export const TipTapEditor = ({ editMode, initialContent, component  , hoveredPos
   }
 
   const insertTable = () => {
-    editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()
+    editor.chain()
+      .focus()
+      .insertContent({
+        type: 'table',
+        attrs: {
+          'data-table-type': 'normal'
+        },
+        content: [{
+          type: 'tableRow',
+          content: Array(3).fill({
+            type: 'tableHeader',
+            content: [{ type: 'paragraph' }]
+          })
+        },
+        ...Array(2).fill({
+          type: 'tableRow',
+          content: Array(3).fill({
+            type: 'tableCell',
+            content: [{ type: 'paragraph' }]
+          })
+        })]
+      })
+      .run();
+  }
+
+  const insertChartTable = () => {
+    editor.chain()
+      .focus()
+      .insertContent({
+        type: 'table',
+        attrs: {
+          'data-table-type': 'chart'
+        },
+        content: [{
+          type: 'tableRow',
+          content: Array(3).fill({
+            type: 'tableHeader',
+            content: [{ type: 'paragraph' }]
+          })
+        },
+        ...Array(2).fill({
+          type: 'tableRow',
+          content: Array(3).fill({
+            type: 'tableCell',
+            content: [{ type: 'paragraph' }]
+          })
+        })]
+      })
+      .run();
   }
 
   const handleCustomEmojiAdded = async (newEmoji) => {
@@ -796,10 +844,17 @@ export const TipTapEditor = ({ editMode, initialContent, component  , hoveredPos
         <div className="table-buttons">
           <Button
             onClick={insertTable}
-            title="Insert Table"
+            title="Insert Normal Table"
             $isDarkMode={isDarkMode}
           >
-            Insert Table
+            Insert Normal Table
+          </Button>
+          <Button
+            onClick={insertChartTable}
+            title="Insert Chart Table"
+            $isDarkMode={isDarkMode}
+          >
+            Insert Chart Table
           </Button>
           <Button
             onClick={() => editor.chain().focus().addColumnBefore().run()}
