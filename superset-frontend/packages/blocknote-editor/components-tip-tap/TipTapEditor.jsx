@@ -93,10 +93,18 @@ const EditorContainer = styled.div`
       td, th {
         border-color: ${props => props.$isDarkMode ? '#2D2D2D' : '#ced4da'};
         color: ${props => props.$isDarkMode ? '#fff' : 'inherit'};
-        }
+      }
 
       th {
         background-color: ${props => props.$isDarkMode ? '#2D2D2D' : '#f8f9fa'};
+      }
+
+      &[data-table-type='chart'] {
+        border: 2px dashed #3b82f6;
+        
+        td, th {
+          border: 2px dashed #3b82f6;
+        }
       }
     }
 
