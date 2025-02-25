@@ -4,6 +4,7 @@ import { CustomTableView } from './CustomTableView';
 export const CustomTable = Table.extend({
   addOptions() {
     return {
+      ...this.parent?.(),
       HTMLAttributes: {},
       resizable: true,
       handleWidth: 5,
@@ -23,7 +24,23 @@ export const CustomTable = Table.extend({
         renderHTML: attributes => ({
           'data-table-type': attributes['data-table-type']
         })
+      },
+      'data-table-resizable': {
+        default: 'true',
+        parseHTML: element => element.getAttribute('data-table-resizable') || 'true',
+        renderHTML: attributes => ({
+          'data-table-resizable': attributes['data-table-resizable'] || 'true'
+        })
       }
+    };
+  },
+
+  configure(options = {}) {
+    return {
+      ...this.parent?.().configure(options),
+      ...options,
+      resizable: true,
+      lastColumnResizable: true,
     };
   }
 }); 

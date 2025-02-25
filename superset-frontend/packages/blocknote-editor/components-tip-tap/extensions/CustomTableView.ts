@@ -74,28 +74,23 @@ export class CustomTableView implements NodeView {
     this.dom = document.createElement('div');
     this.dom.className = 'tableWrapper';
     this.table = this.dom.appendChild(document.createElement('table'));
+    
+    // Set both attributes
+    this.table.setAttribute('data-table-type', node.attrs['data-table-type'] || 'normal');
+    this.table.setAttribute('data-table-resizable', 'true');
+    
     this.colgroup = this.table.appendChild(document.createElement('colgroup'));
-    
-    // Set data-table-type attribute
-    if (node.attrs['data-table-type']) {
-      this.table.setAttribute('data-table-type', node.attrs['data-table-type']);
-    }
-    
     updateColumns(node, this.colgroup, this.table, cellMinWidth);
     this.contentDOM = this.table.appendChild(document.createElement('tbody'));
   }
 
   update(node: ProseMirrorNode) {
-    if (node.type !== this.node.type) {
-      return false;
-    }
-
+    if (node.type !== this.node.type) return false;
     this.node = node;
     
-    // Update data-table-type attribute
-    if (node.attrs['data-table-type']) {
-      this.table.setAttribute('data-table-type', node.attrs['data-table-type']);
-    }
+    // Update both attributes
+    this.table.setAttribute('data-table-type', node.attrs['data-table-type'] || 'normal');
+    this.table.setAttribute('data-table-resizable', 'true');
     
     updateColumns(node, this.colgroup, this.table, this.cellMinWidth);
     return true;
