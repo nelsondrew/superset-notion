@@ -343,9 +343,11 @@ export const ResizableChart = (nodeProps) => {
   const dispatch = useDispatch();
 
   const [realSliceId, setRealSliceId] = useState(node.attrs.chartData?.chartId || '');
-  const [dimensions, setDimensions] = useState({ width: 600, height: 400 });
   const [wrapperDimensions, setWrapperDimensions] = useState({ width: 600, height: 400 });
+  const [dimensions, setDimensions] = useState({ width: 600, height: 400 });
   const [isResizing, setIsResizing] = useState(false);
+  const resizeTimeoutRef = useRef(null);
+  const parentCellRef = useRef(null);
 
   const chartWrapperRef = useRef(null);
   const resizableRef = useRef(null);
@@ -386,12 +388,47 @@ export const ResizableChart = (nodeProps) => {
     }
   }, []);
 
+  // Find parent cell and setup resize observer
+  useEffect(() => {
+    // Find parent cell once
+    if (!parentCellRef.current && chartWrapperRef.current) {
+      let element = chartWrapperRef.current;
+      while (element && !element.matches('td, th')) {
+        element = element.parentElement;
+      }
+      if (element) {
+        parentCellRef.current = element;
+        
+        // Setup resize observer for parent cell
+        const observer = new ResizeObserver(() => {
+          setIsResizing(true);
+          
+          if (resizeTimeoutRef.current) {
+            clearTimeout(resizeTimeoutRef.current);
+          }
+          
+          resizeTimeoutRef.current = setTimeout(() => {
+            setIsResizing(false);
+          }, 300);
+        });
+        
+        observer.observe(element);
+        return () => {
+          observer.disconnect();
+          if (resizeTimeoutRef.current) {
+            clearTimeout(resizeTimeoutRef.current);
+          }
+        };
+      }
+    }
+  }, [chartWrapperRef.current]);
+
+  // Original resize handlers for the chart itself
   const handleResize = (e, direction, ref) => {
     if (selected) {
       const width = parseInt(ref.style.width.replace('px', ''));
       const height = parseInt(ref.style.height.replace('px', ''));
 
-      setIsResizing(true);
       setDimensions({ width, height });
       updateAttributes({
         width: ref.style.width,
