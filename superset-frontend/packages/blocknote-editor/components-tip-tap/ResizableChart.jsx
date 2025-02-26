@@ -346,6 +346,7 @@ export const ResizableChart = (nodeProps) => {
   const [wrapperDimensions, setWrapperDimensions] = useState({ width: 600, height: 400 });
   const [dimensions, setDimensions] = useState({ width: 600, height: 400 });
   const [isResizing, setIsResizing] = useState(false);
+  const [isInTableCell, setIsInTableCell] = useState(false);
   const parentCellRef = useRef(null);
   const lastWidthRef = useRef(null);
   const resizeFrameRef = useRef(null);
@@ -443,37 +444,61 @@ export const ResizableChart = (nodeProps) => {
     }
   }, [isResizing]);
 
+  // Check if chart is in table cell
+  useEffect(() => {
+    if (chartWrapperRef.current) {
+      let element = chartWrapperRef.current;
+      while (element && !element.matches('td, th')) {
+        element = element.parentElement;
+      }
+      setIsInTableCell(!!element);
+    }
+  }, [chartWrapperRef.current]);
+
   // Original resize handlers for the chart itself
   const handleResize = (e, direction, ref) => {
-    if (selected) {
-      const width = parseInt(ref.style.width.replace('px', ''));
-      const height = parseInt(ref.style.height.replace('px', ''));
-
-      setDimensions({ width, height });
-      updateAttributes({
-        width: ref.style.width,
-        height: ref.style.height,
-        selected: true
-      });
+    try {
+      if (selected) {
+        const width = parseInt(ref.style.width.replace('px', ''));
+        const height = parseInt(ref.style.height.replace('px', ''));
+        
+        // Prevent state updates during table cell resize
+        if (!isInTableCell || !isResizing) {
+          setDimensions({ width, height });
+          updateAttributes({
+            width: ref.style.width,
+            height: ref.style.height,
+            selected: true
+          });
+        }
+      }
+    } catch (error) {
+      console.warn('Resize handler error:', error);
     }
   }
 
   const handleResizeStop = (e, direction, ref) => {
-    const width = parseInt(ref.style.width.replace('px', ''));
-    const height = parseInt(ref.style.height.replace('px', ''));
+    try {
+      const width = parseInt(ref.style.width.replace('px', ''));
+      const height = parseInt(ref.style.height.replace('px', ''));
 
-    setDimensions({ width, height });
-    
-    // Small delay before allowing PortableChart to rerender
-    setTimeout(() => {
+      // Only update dimensions if not in table cell resize
+      if (!isInTableCell || !isResizing) {
+        setDimensions({ width, height });
+        updateAttributes({
+          width: ref.style.width,
+          height: ref.style.height,
+          selected: true
+        });
+      }
+
+      setTimeout(() => {
+        setIsResizing(false);
+      }, 100);
+    } catch (error) {
+      console.warn('Resize stop handler error:', error);
       setIsResizing(false);
-    }, 100);
-
-    updateAttributes({
-      width: ref.style.width,
-      height: ref.style.height,
-      selected: true
-    });
+    }
   }
 
   const handleConfirmDelete = () => {
@@ -610,7 +635,7 @@ export const ResizableChart = (nodeProps) => {
             minWidth={200}
             maxWidth="100%"
             enable={{
-              ...(!editMode ? {
+              ...(!editMode || (isInTableCell && isResizing) ? {
                 top: false,
                 right: false,
                 bottom: false,
