@@ -346,8 +346,9 @@ export const ResizableChart = (nodeProps) => {
   const [wrapperDimensions, setWrapperDimensions] = useState({ width: 600, height: 400 });
   const [dimensions, setDimensions] = useState({ width: 600, height: 400 });
   const [isResizing, setIsResizing] = useState(false);
-  const resizeTimeoutRef = useRef(null);
   const parentCellRef = useRef(null);
+  const lastWidthRef = useRef(null);
+  const resizeFrameRef = useRef(null);
 
   const chartWrapperRef = useRef(null);
   const resizableRef = useRef(null);
@@ -398,30 +399,49 @@ export const ResizableChart = (nodeProps) => {
       }
       if (element) {
         parentCellRef.current = element;
+        lastWidthRef.current = element.offsetWidth;
         
         // Setup resize observer for parent cell
-        const observer = new ResizeObserver(() => {
-          setIsResizing(true);
-          
-          if (resizeTimeoutRef.current) {
-            clearTimeout(resizeTimeoutRef.current);
+        const observer = new ResizeObserver((entries) => {
+          // Cancel any pending animation frame
+          if (resizeFrameRef.current) {
+            cancelAnimationFrame(resizeFrameRef.current);
           }
           
-          resizeTimeoutRef.current = setTimeout(() => {
-            setIsResizing(false);
-          }, 1000);
+          const entry = entries[0];
+          const newWidth = entry.contentRect.width;
+          
+          // Only trigger resize if width actually changed
+          if (newWidth !== lastWidthRef.current) {
+            lastWidthRef.current = newWidth;
+            
+            // Use requestAnimationFrame for smoother state updates
+            resizeFrameRef.current = requestAnimationFrame(() => {
+              setIsResizing(true);
+            });
+          }
         });
         
         observer.observe(element);
         return () => {
           observer.disconnect();
-          if (resizeTimeoutRef.current) {
-            clearTimeout(resizeTimeoutRef.current);
+          if (resizeFrameRef.current) {
+            cancelAnimationFrame(resizeFrameRef.current);
           }
         };
       }
     }
   }, [chartWrapperRef.current]);
+
+  // Handle resize end with a separate effect
+  useEffect(() => {
+    if (isResizing) {
+      const timeoutId = setTimeout(() => {
+        setIsResizing(false);
+      }, 1000);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [isResizing]);
 
   // Original resize handlers for the chart itself
   const handleResize = (e, direction, ref) => {
