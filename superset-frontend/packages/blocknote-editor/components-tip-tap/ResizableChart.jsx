@@ -409,7 +409,7 @@ export const ResizableChart = (nodeProps) => {
           
           resizeTimeoutRef.current = setTimeout(() => {
             setIsResizing(false);
-          }, 300);
+          }, 1000);
         });
         
         observer.observe(element);
