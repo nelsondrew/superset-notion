@@ -28,7 +28,7 @@ export const SlashCommand = Extension.create({
   },
 })
 
-export const getSuggestionItems = ({ query }) => {
+export const getSuggestionItems = ({ query, editor }) => {
   const items = [
     {
       title: 'Basic Formatting',
@@ -222,6 +222,70 @@ export const getSuggestionItems = ({ query }) => {
               .run()
           }
         },
+        {
+          title: 'Add Chart Cell Before',
+          subtitle: 'Add a new chart column before the current one',
+          icon: '◀️',
+          command: ({ editor, range }) => {
+            const cell = editor.view.domAtPos(editor.state.selection.from)?.node;
+            const isChartTable = cell?.closest('table')?.getAttribute('data-table-type') === 'chart';
+            
+            if (isChartTable) {
+              editor
+                .chain()
+                .focus()
+                .addColumnBefore()
+                .run();
+            }
+          },
+          shouldShow: ({ editor }) => {
+            // Only show if we're in a chart table
+            const cell = editor.view.domAtPos(editor.state.selection.from)?.node;
+            return cell?.closest('table')?.getAttribute('data-table-type') === 'chart';
+          }
+        },
+        {
+          title: 'Add Chart Cell After',
+          subtitle: 'Add a new chart column after the current one',
+          icon: '▶️',
+          command: ({ editor, range }) => {
+            const cell = editor.view.domAtPos(editor.state.selection.from)?.node;
+            const isChartTable = cell?.closest('table')?.getAttribute('data-table-type') === 'chart';
+            
+            if (isChartTable) {
+              editor
+                .chain()
+                .focus()
+                .addColumnAfter()
+                .run();
+            }
+          },
+          shouldShow: ({ editor }) => {
+            const cell = editor.view.domAtPos(editor.state.selection.from)?.node;
+            return cell?.closest('table')?.getAttribute('data-table-type') === 'chart';
+          }
+        },
+        {
+          title: 'Delete Chart Cell',
+          subtitle: 'Delete the current chart column',
+          icon: '🗑️',
+          command: ({ editor, range }) => {
+            const cell = editor.view.domAtPos(editor.state.selection.from)?.node;
+            const isChartTable = cell?.closest('table')?.getAttribute('data-table-type') === 'chart';
+            
+            if (isChartTable) {
+              editor
+                .chain()
+                .focus()
+                .deleteColumn()
+                .run();
+            }
+          },
+          shouldShow: ({ editor }) => {
+            const cell = editor.view.domAtPos(editor.state.selection.from)?.node;
+            return cell?.closest('table')?.getAttribute('data-table-type') === 'chart';
+          }
+        },
       ],
     },
     {
@@ -243,7 +307,7 @@ export const getSuggestionItems = ({ query }) => {
           }
         }
       ]
-    }
+    },
   ]
 
   if (typeof query === 'string' && query.length > 0) {
