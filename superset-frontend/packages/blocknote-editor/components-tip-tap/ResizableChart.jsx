@@ -50,7 +50,7 @@ const ChartWrapper = styled.div`
 
 const Chart = styled.div`
   background: #ffffff;
-  border: 2px solid #e2e8f0;
+  border: ${props => props.selected ? '2px solid #3b82f6' : '2px solid #e2e8f0'};
   border-radius: 6px;
   display: flex;
   align-items: center;
@@ -68,7 +68,7 @@ const Chart = styled.div`
   z-index: 1;
 
   &:hover {
-    border-color: ${props => props.editMode ? '#cbd5e1' : '#e2e8f0'};
+    border-color: ${props => props.editMode ? '#3b82f6' : '#e2e8f0'};
     box-shadow: ${props => props.editMode ? '0 2px 4px rgba(0, 0, 0, 0.1)' : '0 1px 3px rgba(0, 0, 0, 0.1)'};
 
     & ~ .resize-handle {
@@ -78,7 +78,7 @@ const Chart = styled.div`
 
   &.ProseMirror-selectednode {
     border-color: ${props => props.editMode ? '#3b82f6' : '#e2e8f0'};
-    outline: ${props => props.editMode ? '2px solid rgba(59, 130, 246, 0.2)' : 'none'};
+    outline: ${props => props.editMode ? '3px solid rgba(59, 130, 246, 0.2)' : 'none'};
     box-shadow: ${props => props.editMode ? '0 2px 4px rgba(59, 130, 246, 0.1)' : '0 1px 3px rgba(0, 0, 0, 0.1)'};
     position: relative;
     z-index: 50;
@@ -577,38 +577,52 @@ export const ResizableChart = (nodeProps) => {
             }}
             handleStyles={{
               right: {
-                width: '2px',
-                right: '-1px',
+                width: '6px',
+                right: '-3px',
                 top: '0',
                 bottom: '0',
                 cursor: 'ew-resize',
                 background: selected ? '#3b82f6' : '#e2e8f0',
                 border: 'none',
                 transition: 'all 0.2s ease',
-                opacity: 0
+                opacity: editMode ? 0.5 : 0,
+                '&:hover': {
+                  opacity: 1,
+                  width: '8px',
+                  right: '-4px'
+                }
               },
               bottom: {
-                height: '2px',
-                bottom: '-1px',
+                height: '6px',
+                bottom: '-3px',
                 left: '0',
                 right: '0',
                 cursor: 'ns-resize',
                 background: selected ? '#3b82f6' : '#e2e8f0',
                 border: 'none',
                 transition: 'all 0.2s ease',
-                opacity: 0
+                opacity: editMode ? 0.5 : 0,
+                '&:hover': {
+                  opacity: 1,
+                  height: '8px',
+                  bottom: '-4px'
+                }
               },
               bottomRight: {
-                width: '6px',
-                height: '6px',
-                bottom: '-2px',
-                right: '-2px',
+                width: '12px',
+                height: '12px',
+                bottom: '-6px',
+                right: '-6px',
                 cursor: 'nwse-resize',
                 background: selected ? '#3b82f6' : '#e2e8f0',
                 border: 'none',
                 borderRadius: '50%',
                 transition: 'all 0.2s ease',
-                opacity: 0
+                opacity: editMode ? 0.5 : 0,
+                '&:hover': {
+                  opacity: 1,
+                  transform: 'scale(1.2)'
+                }
               },
             }}
             handleClasses={{

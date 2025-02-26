@@ -91,14 +91,54 @@ const EditorContainer = styled.div`
     }
 
     table {
+      position: relative;
+      border-collapse: collapse;
+      
       td, th {
         border-color: ${props => props.$isDarkMode ? '#2D2D2D' : '#ced4da'};
         color: ${props => props.$isDarkMode ? '#fff' : 'inherit'};
+        position: relative;
+        min-width: 100px;
+        padding: 8px;
       }
 
       th {
         background-color: ${props => props.$isDarkMode ? '#2D2D2D' : '#f8f9fa'};
       }
+
+      /* Make table resizable in edit mode */
+      ${props => props.editMode && `
+        &[data-table-resizable="true"] {
+          border: 2px solid #e5e7eb;
+          
+          /* Column resize handle */
+          td, th {
+            &:hover::after {
+              content: '';
+              position: absolute;
+              top: 0;
+              right: -3px;
+              width: 6px;
+              height: 100%;
+              background-color: #3b82f6;
+              cursor: col-resize;
+              opacity: 0.5;
+            }
+            
+            &.selectedCell::after {
+              content: '';
+              position: absolute;
+              top: 0;
+              right: -3px;
+              width: 6px;
+              height: 100%;
+              background-color: #3b82f6;
+              cursor: col-resize;
+              opacity: 1;
+            }
+          }
+        }
+      `}
 
       &[data-table-type='chart'] {
         border: 2px dashed #3b82f6;
