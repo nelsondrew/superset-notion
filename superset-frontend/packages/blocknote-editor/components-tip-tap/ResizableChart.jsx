@@ -343,17 +343,9 @@ export const ResizableChart = (nodeProps) => {
   const dispatch = useDispatch();
 
   const [realSliceId, setRealSliceId] = useState(node.attrs.chartData?.chartId || '');
-  const [dimensions, setDimensions] = useState(() => {
-    return {
-      width: parseInt(node.attrs.width) || 600,
-      height: parseInt(node.attrs.height) || 200
-    };
-  });
-
-  const [wrapperDimensions, setWrapperDimensions] = useState({
-    width: parseInt(node.attrs.width) || 0,
-    height: parseInt(node.attrs.height) || 0
-  });
+  const [dimensions, setDimensions] = useState({ width: 600, height: 400 });
+  const [wrapperDimensions, setWrapperDimensions] = useState({ width: 600, height: 400 });
+  const [isResizing, setIsResizing] = useState(false);
 
   const chartWrapperRef = useRef(null);
   const resizableRef = useRef(null);
@@ -399,6 +391,7 @@ export const ResizableChart = (nodeProps) => {
       const width = parseInt(ref.style.width.replace('px', ''));
       const height = parseInt(ref.style.height.replace('px', ''));
 
+      setIsResizing(true);
       setDimensions({ width, height });
       updateAttributes({
         width: ref.style.width,
@@ -413,6 +406,11 @@ export const ResizableChart = (nodeProps) => {
     const height = parseInt(ref.style.height.replace('px', ''));
 
     setDimensions({ width, height });
+    
+    // Small delay before allowing PortableChart to rerender
+    setTimeout(() => {
+      setIsResizing(false);
+    }, 100);
 
     updateAttributes({
       width: ref.style.width,
@@ -653,12 +651,26 @@ export const ResizableChart = (nodeProps) => {
               )}
 
               {(realSliceId) ? (
-                <PortableChart
-                  sliceId={parseInt(realSliceId)}
-                  width={parseInt(wrapperDimensions.width)}
-                  height={parseInt(wrapperDimensions.height)}
-                  chartLayoutId={editorChartLayoutId}
-                />
+                !isResizing ? (
+                  <PortableChart
+                    sliceId={parseInt(realSliceId)}
+                    width={parseInt(wrapperDimensions.width)}
+                    height={parseInt(wrapperDimensions.height)}
+                    chartLayoutId={editorChartLayoutId}
+                  />
+                ) : (
+                  <div 
+                    style={{ 
+                      width: '100%', 
+                      height: '100%', 
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                  >
+                    Resizing...
+                  </div>
+                )
               ) : (
                 'Chart'
               )}
