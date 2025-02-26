@@ -44,6 +44,7 @@ import { createPortal } from 'react-dom'
 import { DecorationSet, Decoration } from 'prosemirror-view'
 import { CustomTable } from './extensions/CustomTable'
 
+
 const EditorContainer = styled.div`
   background: ${props => props.$isDarkMode ? '#1A1B1E' : '#fff'};
   border-radius: 8px;
@@ -320,7 +321,8 @@ const PopoverContainer = styled.div`
   }
 `
 
-export const TipTapEditor = ({ editMode, initialContent, component  , hoveredPos , setHoveredPos }) => {
+export const TipTapEditor = ({ editMode, initialContent, component, hoveredPos, setHoveredPos }) => {
+  const [editorKey, setEditorKey] = useState(0); // Add key to force editor recreation
   const [isMounted, setIsMounted] = useState(false)
   const [isEmojiModalOpen, setIsEmojiModalOpen] = useState(false)
   const [isDarkMode, setIsDarkMode] = useState(false)
@@ -380,6 +382,7 @@ export const TipTapEditor = ({ editMode, initialContent, component  , hoveredPos
       Superscript,
       CustomTable.configure({
         resizable: true,
+        allowTableNodeSelection: true,
         HTMLAttributes: {
           class: 'my-custom-table',
         },
@@ -419,7 +422,7 @@ export const TipTapEditor = ({ editMode, initialContent, component  , hoveredPos
       TabIndent,
       Comment,
     ],
-    editable: editMode,
+    editable: true,
     injectCSS: false,
     content: component?.meta?.editorJson || initialContent, 
     onCreate() {
@@ -490,10 +493,21 @@ export const TipTapEditor = ({ editMode, initialContent, component  , hoveredPos
     };
   }, [editor]);
 
-  // Add this useEffect to update editable state when editMode changes
   useEffect(() => {
     if (editor) {
-      editor.setEditable(editMode)
+      // Set editable state
+      editor.setEditable(editMode);
+      
+      if (editMode) {
+        // Force update to ensure table handlers are initialized
+        const tr = editor.state.tr;
+        editor.view.dispatch(tr);
+        
+        // Focus to ensure handlers are attached
+        setTimeout(() => {
+          editor.commands.focus();
+        }, 0);
+      }
     }
   }, [editor, editMode])
 
@@ -662,14 +676,7 @@ export const TipTapEditor = ({ editMode, initialContent, component  , hoveredPos
             type: 'tableHeader',
             content: [{ type: 'paragraph' }]
           })
-        },
-        ...Array(2).fill({
-          type: 'tableRow',
-          content: Array(3).fill({
-            type: 'tableCell',
-            content: [{ type: 'paragraph' }]
-          })
-        })]
+        }]
       })
       .run();
   }
