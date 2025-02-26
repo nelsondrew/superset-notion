@@ -8,6 +8,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import { setUnsavedChanges } from 'src/dashboard/actions/dashboardState'
 import { v4 as uuidv4 } from 'uuid'
 import { deleteComponent } from 'src/dashboard/actions/dashboardLayout'
+import ResizableDiv from "./ResizableDiv"
 
 const ChartContainer = styled.div`
   margin: 1rem 0;
@@ -401,28 +402,28 @@ export const ResizableChart = (nodeProps) => {
       if (element) {
         parentCellRef.current = element;
         lastWidthRef.current = element.offsetWidth;
-        
+
         // Setup resize observer for parent cell
         const observer = new ResizeObserver((entries) => {
           // Cancel any pending animation frame
           if (resizeFrameRef.current) {
             cancelAnimationFrame(resizeFrameRef.current);
           }
-          
+
           const entry = entries[0];
           const newWidth = entry.contentRect.width;
-          
+
           // Only trigger resize if width actually changed
           if (newWidth !== lastWidthRef.current) {
             lastWidthRef.current = newWidth;
-            
+
             // Use requestAnimationFrame for smoother state updates
             resizeFrameRef.current = requestAnimationFrame(() => {
               setIsResizing(true);
             });
           }
         });
-        
+
         observer.observe(element);
         return () => {
           observer.disconnect();
@@ -461,7 +462,7 @@ export const ResizableChart = (nodeProps) => {
       if (selected) {
         const width = parseInt(ref.style.width.replace('px', ''));
         const height = parseInt(ref.style.height.replace('px', ''));
-        
+
         // Prevent state updates during table cell resize
         if (!isInTableCell || !isResizing) {
           setDimensions({ width, height });
@@ -502,8 +503,8 @@ export const ResizableChart = (nodeProps) => {
   }
 
   const handleConfirmDelete = () => {
-    if(node.attrs.chartData?.chartId) {
-      dispatch(deleteComponent(node.attrs?.chartLayoutId , parentComponentId));
+    if (node.attrs.chartData?.chartId) {
+      dispatch(deleteComponent(node.attrs?.chartLayoutId, parentComponentId));
     }
     deleteNode()
     setShowDeleteModal(false)
@@ -621,98 +622,7 @@ export const ResizableChart = (nodeProps) => {
           width={editMode ? dimensions.width : wrapperDimensions.width}
           height={editMode ? dimensions.height : wrapperDimensions.height}
         >
-          <Resizable
-            ref={resizableRef}
-            defaultSize={{
-              width: dimensions.width + 'px',
-              height: dimensions.height + 'px',
-            }}
-            size={{
-              width: dimensions.width + 'px',
-              height: dimensions.height + 'px',
-            }}
-            minHeight={100}
-            minWidth={200}
-            maxWidth="100%"
-            enable={{
-              ...(!editMode || (isInTableCell && isResizing) ? {
-                top: false,
-                right: false,
-                bottom: false,
-                left: false,
-                topRight: false,
-                bottomRight: false,
-                bottomLeft: false,
-                topLeft: false,
-              } : {
-                top: false,
-                right: true,
-                bottom: true,
-                left: false,
-                topRight: false,
-                bottomRight: true,
-                bottomLeft: false,
-                topLeft: false,
-              })
-            }}
-            handleStyles={{
-              right: {
-                width: '6px',
-                right: '-3px',
-                top: '0',
-                bottom: '0',
-                cursor: 'ew-resize',
-                background: selected ? '#3b82f6' : '#e2e8f0',
-                border: 'none',
-                transition: 'all 0.2s ease',
-                opacity: editMode ? 0.5 : 0,
-                '&:hover': {
-                  opacity: 1,
-                  width: '8px',
-                  right: '-4px'
-                }
-              },
-              bottom: {
-                height: '6px',
-                bottom: '-3px',
-                left: '0',
-                right: '0',
-                cursor: 'ns-resize',
-                background: selected ? '#3b82f6' : '#e2e8f0',
-                border: 'none',
-                transition: 'all 0.2s ease',
-                opacity: editMode ? 0.5 : 0,
-                '&:hover': {
-                  opacity: 1,
-                  height: '8px',
-                  bottom: '-4px'
-                }
-              },
-              bottomRight: {
-                width: '12px',
-                height: '12px',
-                bottom: '-6px',
-                right: '-6px',
-                cursor: 'nwse-resize',
-                background: selected ? '#3b82f6' : '#e2e8f0',
-                border: 'none',
-                borderRadius: '50%',
-                transition: 'all 0.2s ease',
-                opacity: editMode ? 0.5 : 0,
-                '&:hover': {
-                  opacity: 1,
-                  transform: 'scale(1.2)'
-                }
-              },
-            }}
-            handleClasses={{
-              right: 'resize-handle',
-              bottom: 'resize-handle',
-              bottomRight: 'resize-handle',
-            }}
-            onResize={handleResize}
-            onResizeStop={handleResizeStop}
-          >
+          <ResizableDiv>
             <Chart
               ref={chartContentRef}
               className={selected ? 'ProseMirror-selectednode' : ''}
@@ -741,10 +651,10 @@ export const ResizableChart = (nodeProps) => {
                     chartLayoutId={editorChartLayoutId}
                   />
                 ) : (
-                  <div 
-                    style={{ 
-                      width: '100%', 
-                      height: '100%', 
+                  <div
+                    style={{
+                      width: '100%',
+                      height: '100%',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center'
@@ -757,7 +667,7 @@ export const ResizableChart = (nodeProps) => {
                 'Chart'
               )}
             </Chart>
-          </Resizable>
+          </ResizableDiv>
         </ChartWrapper>
         {node.attrs.caption && (
           <Caption
