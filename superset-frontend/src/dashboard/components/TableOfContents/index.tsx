@@ -14,33 +14,39 @@ interface TableOfContentsProps {
   topOffset?: number;
 }
 
-const TOCContent = styled.div`
+interface RootState {
+  dashboardState: {
+    darkMode: boolean;
+  };
+}
+
+const TOCContent = styled.div<{ $isDarkMode: boolean }>`
   padding: 32px 24px;
-  background: white;
+  background: ${props => props.$isDarkMode ? '#191919' : 'white'};
   border-radius: 8px;
 
   min-height: 100%;
 `;
 
-const TOCHeader = styled.div`
+const TOCHeader = styled.div<{ $isDarkMode: boolean }>`
   display: flex;
   align-items: center;
   gap: 12px;
   margin-bottom: 32px;
   padding-bottom: 16px;
-  border-bottom: 2px solid #E2E8F0;
+  border-bottom: 2px solid ${props => props.$isDarkMode ? '#2D2D2D' : '#E2E8F0'};
   flex-shrink: 0;
 
   h2 {
     font-size: 20px;
     font-weight: 600;
-    color: #1E293B;
+    color: ${props => props.$isDarkMode ? '#FFFFFF' : '#1E293B'};
     margin: 0;
     font-family: serif;
   }
 
   svg {
-    color: black;
+    color: ${props => props.$isDarkMode ? '#FFFFFF' : '#000000'};
   }
 `;
 
@@ -51,7 +57,7 @@ const TOCList = styled.div`
   margin-top: 16px;
 `;
 
-const StyledTOCItem = styled.div<{ depth: number; isActive: boolean }>`
+const StyledTOCItem = styled.div<{ depth: number; isActive: boolean; $isDarkMode: boolean }>`
   display: flex;
   align-items: center;
   gap: 8px;
@@ -62,21 +68,15 @@ const StyledTOCItem = styled.div<{ depth: number; isActive: boolean }>`
   transition: all 0.2s ease;
   
   &:hover {
-    background-color: #F5F5F5;
+    background-color: ${props => props.$isDarkMode ? '#2D2D2D' : '#F5F5F5'};
+  }
+
+  svg {
+    color : ${props => props.$isDarkMode ? props?.isActive ? '#3B82F6': '#9CA3AF' : '#525252'};
+
   }
   
-  ${props => props.isActive && css`
-    background-color: #E5E5E5;
-    
-    .title {
-      color: #171717;
-      font-weight: 500;
-    }
-    
-    .dots {
-      border-bottom-color: #A3A3A3;
-    }
-  `}
+  
   
   .title-container {
     flex: 1;
@@ -86,27 +86,46 @@ const StyledTOCItem = styled.div<{ depth: number; isActive: boolean }>`
     min-width: 0;
     
     .title {
-      color: #525252;
+      color: ${props => props.$isDarkMode ? props?.isActive ? '#3B82F6': '#9CA3AF' : '#525252'};
       font-size: 14px;
       transition: color 0.2s ease;
+    }
+  
+    .file-title {
+      color : ${props => props.$isDarkMode ? props?.isActive ? '#3B82F6': '#9CA3AF' : '#525252'};
     }
     
     .dots {
       flex: 1;
-      border-bottom: 1px dotted #D4D4D4;
+      border-bottom: 1px dotted ${props => props.$isDarkMode ? '#4B5563' : '#D4D4D4'};
       margin: 0 4px;
     }
   }
+
+  ${({ isActive, $isDarkMode }) => isActive && css`
+    background-color: ${$isDarkMode ? '#2D2D2D' : '#E5E5E5'};
+    
+    .title {
+      color: ${$isDarkMode ? '#3B82F6' : '#171717'};
+      font-weight: 500;
+    }
+    
+    .dots {
+      border-bottom-color: ${$isDarkMode ? '#3B82F6' : '#A3A3A3'};
+    }
+  `}
 `;
 
 const TOCItem = memo(({ 
   item, 
   isActive, 
-  onClick 
+  onClick,
+  $isDarkMode
 }: { 
   item: TOCItemData; 
   isActive: boolean; 
   onClick: (id: string) => void;
+  $isDarkMode: boolean;
 }) => {
   // Helper function to parse HTML content and check if it's empty
   const parseHTML = (html: string) => {
@@ -126,9 +145,10 @@ const TOCItem = memo(({
     <StyledTOCItem
       depth={item.depth}
       isActive={isActive}
+      $isDarkMode={$isDarkMode}
       onClick={() => onClick(item.id)}
     >
-      {item.depth === 0 && <FileText size={16} />}
+      {item.depth === 0 && <FileText className='file-title' size={16} />}
       <div className="title-container">
         <span className="title">{parsedTitle}</span>
         <div className="dots" />
@@ -137,7 +157,7 @@ const TOCItem = memo(({
   );
 });
 
-const TOCMinimized = styled.div`
+const TOCMinimized = styled.div<{ $isDarkMode: boolean }>`
   position: fixed;
   right: 8px;
   top: 100px;
@@ -160,6 +180,7 @@ const TOCMinimized = styled.div`
     transition: all 0.2s ease;
     cursor: pointer;
     margin-left: auto;
+    filter: ${props => props.$isDarkMode ? 'drop-shadow(0 0 2px rgba(255, 255, 255, 0.3))' : 'none'};
     
     &::before {
       content: '';
@@ -172,17 +193,26 @@ const TOCMinimized = styled.div`
     }
     
     &.active {
-      background: #000000;
+      background: ${props => props.$isDarkMode ? '#FFFFFF' : '#000000'};
+      box-shadow: ${props => props.$isDarkMode ? `
+        0 0 4px rgba(255, 255, 255, 0.5),
+        0 0 8px rgba(255, 255, 255, 0.4),
+        0 0 12px rgba(255, 255, 255, 0.3)
+      ` : 'none'};
       width: 32px;
     }
     
     &.inactive {
-      background: #D1D5DB;
+      background: ${props => props.$isDarkMode ? '#4B5563' : '#D1D5DB'};
       width: 24px;
       opacity: 0.5;
       
       &:hover {
-        background: #6B7280;
+        background: ${props => props.$isDarkMode ? '#9CA3AF' : '#6B7280'};
+        box-shadow: ${props => props.$isDarkMode ? `
+          0 0 4px rgba(255, 255, 255, 0.4),
+          0 0 8px rgba(255, 255, 255, 0.3)
+        ` : 'none'};
         opacity: 1;
         width: 28px;
       }
@@ -190,11 +220,12 @@ const TOCMinimized = styled.div`
   }
 `;
 
-const TOCContainer = styled.div<{ $isExpanded: boolean }>`
+const TOCContainer = styled.div<{ $isExpanded: boolean; $isDarkMode: boolean }>`
   position: fixed;
   max-height: 300px;
   width: ${TOC_PANE_WIDTH}px;
-  background-color: rgba(255, 255, 255, 0.95);
+  border: 0.5px solid gray;
+  background-color: ${props => props.$isDarkMode ? '#191919' : 'rgba(255, 255, 255, 0.95)'};
   backdrop-filter: blur(8px);
   right: 40px;
   padding: 12px;
@@ -204,7 +235,9 @@ const TOCContainer = styled.div<{ $isExpanded: boolean }>`
   opacity: ${props => props.$isExpanded ? '1' : '0'};
   visibility: ${props => props.$isExpanded ? 'visible' : 'hidden'};
   border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  box-shadow: ${props => props.$isDarkMode ? 
+    '0 4px 12px rgba(0, 0, 0, 0.3)' : 
+    '0 4px 12px rgba(0, 0, 0, 0.08)'};
   z-index: 100;
   
   &::-webkit-scrollbar {
@@ -264,6 +297,7 @@ const getOrderedHeadings = (pagesData: Record<string, { index: number; headings:
 
 const TableOfContents = memo(({ topOffset = 0 }: TableOfContentsProps) => {
   const pagesData = useSelector((state: any) => state?.dashboardInfo?.metadata?.pagesData);
+  const isDarkMode = useSelector((state: RootState) => state?.dashboardState?.darkMode);
   const [toc, setToc] = useState<TOCItemData[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -387,6 +421,7 @@ const TableOfContents = memo(({ topOffset = 0 }: TableOfContentsProps) => {
     <div css={containerStyle}>
       <TOCMinimized 
         ref={tocRef}
+        $isDarkMode={isDarkMode}
         onMouseEnter={() => {
           setIsExpanded(true)
         }}
@@ -407,13 +442,14 @@ const TableOfContents = memo(({ topOffset = 0 }: TableOfContentsProps) => {
       <TOCContainer 
         ref={modalRef}
         $isExpanded={isExpanded}
+        $isDarkMode={isDarkMode}
         style={{
           top: '50%',
           transform: `translateY(-50%) ${isExpanded ? 'translateX(2rem)' : 'translateX(20px)'}`
         }}
       >
-        <TOCContent>
-          <TOCHeader>
+        <TOCContent $isDarkMode={isDarkMode}>
+          <TOCHeader $isDarkMode={isDarkMode}>
             <List size={20} />
             <h2>{t('Table of contents')}</h2>
           </TOCHeader>
@@ -423,6 +459,7 @@ const TableOfContents = memo(({ topOffset = 0 }: TableOfContentsProps) => {
                 key={item.id}
                 item={item}
                 isActive={activeId === item.id}
+                $isDarkMode={isDarkMode}
                 onClick={handleTOCItemClick}
               />
             ))}
