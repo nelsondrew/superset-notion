@@ -70,10 +70,10 @@ function uuid(type) {
   return `${type}-${nanoid()}`;
 }
 
-export default function entityFactory(type, meta, parents = []) {
+export default function entityFactory(type, meta, parents = [], generatedId) {
   return {
     type,
-    id: uuid(type),
+    id: generatedId? generatedId :  uuid(type),
     children: [],
     parents,
     meta: {

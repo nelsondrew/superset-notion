@@ -31,10 +31,10 @@ import { CustomEmojiUploader } from './CustomEmojiUploader'
 import { CustomEmoji } from './extensions/CustomEmojiExtension'
 import { AddEmojiModal } from './AddEmojiModal'
 import { customEmojiStorage } from '../utils/customEmojiStorage'
-import { useDispatch } from 'react-redux'
+import { useDispatch, useSelector } from 'react-redux'
 import { updateComponents } from 'src/dashboard/actions/dashboardLayout'
 import { debounce } from 'lodash'
-import { Moon, Sun  } from 'lucide-react'
+import { Moon, Sun, Check, Copy } from 'lucide-react'
 import { TabIndent } from './extensions/TabIndentExtension'
 import { exportToDocx } from '../utils/documentExport'
 import { Comment } from './extensions/CommentExtension'
@@ -43,6 +43,8 @@ import { CommentsThread } from './CommentsThread'
 import { v4 as uuidv4 } from 'uuid'
 import { createPortal } from 'react-dom'
 import { DecorationSet, Decoration } from 'prosemirror-view'
+import { getDropProps } from "../utils/dropComponent"
+import { nanoid } from 'nanoid'
 
 const EditorContainer = styled.div`
   background: ${props => props.$isDarkMode ? '#1A1B1E' : '#fff'};
@@ -244,6 +246,30 @@ const ControlsContainer = styled.div`
   gap: 8px;
 `
 
+const CopyButton = styled.button`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  background: ${props => props.$isDarkMode ? '#2D2D2D' : '#fff'};
+  border: 1px solid ${props => props.$isDarkMode ? '#404040' : '#E4E6EB'};
+  color: ${props => props.$isDarkMode ? '#fff' : '#000'};
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 13px;
+
+  &:hover {
+    background: ${props => props.$isDarkMode ? '#404040' : '#f8fafc'};
+  }
+
+  svg {
+    width: 14px;
+    height: 14px;
+  }
+`
+
 const FullscreenButton = styled.button`
   display: flex;
   align-items: center;
@@ -312,7 +338,7 @@ const PopoverContainer = styled.div`
   }
 `
 
-export const TipTapEditor = ({ editMode, initialContent, component  , hoveredPos , setHoveredPos }) => {
+export const TipTapEditor = ({ editMode, initialContent, component  , hoveredPos , setHoveredPos , handleComponentDrop }) => {
   const [isMounted, setIsMounted] = useState(false)
   const [isEmojiModalOpen, setIsEmojiModalOpen] = useState(false)
   const [isDarkMode, setIsDarkMode] = useState(false)
@@ -321,10 +347,12 @@ export const TipTapEditor = ({ editMode, initialContent, component  , hoveredPos
   const [comments, setComments] = useState({}) // Map of commentId -> array of comments
   const [activeCommentMark, setActiveCommentMark] = useState(null)
   const [commentAnchorEl, setCommentAnchorEl] = useState(null)
-  // const [hoveredPos, setHoveredPos] = useState(null)
+  const [copySuccess, setCopySuccess] = useState(false)
   
   const id = component?.id
   const dispatch = useDispatch()
+  const dashboardLayout = useSelector(state => state.dashboardLayout.present);
+  const [pendingChartUpdates, setPendingChartUpdates] = useState(new Map());
 
   // Add state for popover portal container
   const [portalContainer, setPortalContainer] = useState(null)
@@ -346,6 +374,30 @@ export const TipTapEditor = ({ editMode, initialContent, component  , hoveredPos
   }
 
   const debounceUpdateEditorComponent = debounce(updateEditorComponentMeta, 300);
+
+  const handleCopy = () => {
+    if (editor) {
+      // Get editor content as JSON
+      const content = editor.getJSON();
+      
+      // Create clipboard data with both HTML and JSON
+      const clipboardData = {
+        'text/html': editor.getHTML(),
+        'application/x-tiptap-document': JSON.stringify(content)
+      };
+      
+      // Copy to clipboard
+      navigator.clipboard.write([
+        new ClipboardItem({
+          'text/html': new Blob([clipboardData['text/html']], { type: 'text/html' }),
+          'text/plain': new Blob([JSON.stringify(content)], { type: 'text/plain' })
+        })
+      ]).then(() => {
+        setCopySuccess(true);
+        setTimeout(() => setCopySuccess(false), 2000);
+      });
+    }
+  };
 
   const editor = useEditor({
     extensions: [
@@ -435,6 +487,73 @@ export const TipTapEditor = ({ editMode, initialContent, component  , hoveredPos
       }
     },
     editorProps: {
+      handlePaste: (view, event) => {
+        const clipboardData = event.clipboardData;
+        
+        try {
+          const jsonContent = clipboardData.getData('text/plain');
+          const parsedContent = JSON.parse(jsonContent);
+          if (parsedContent.type === 'doc') {
+            // First, collect all chart nodes that need updating
+            const chartsToUpdate = [];
+            const traverseNodes = (node, depth = 0) => {
+              if(node.type === 'chart') {
+                const generatedChartLayoutId = `CHART-${nanoid()}`
+                console.log(generatedChartLayoutId, "generated chart layout id")
+                // Store chart info for later update
+                chartsToUpdate.push({
+                  nodeId: node.attrs.nodeId,
+                  generatedChartLayoutId,
+                  attrs: node.attrs
+                });
+
+                const dropProps = getDropProps({
+                  parentId: id,
+                  chartmeta: {
+                    chartId: node.attrs.chartData?.chartId,
+                    sliceName: node?.attrs?.chartData?.sliceName
+                  },
+                  generatedId: generatedChartLayoutId,
+                });
+
+                handleComponentDrop(dropProps);
+              }
+              
+              if (node.content) {
+                node.content.forEach(child => traverseNodes(child, depth + 1));
+              }
+            };
+            
+            traverseNodes(parsedContent);
+            editor.commands.setContent(parsedContent);
+           
+            // After content is inserted, update all chart nodes with their new IDs
+            setTimeout(() => {
+              chartsToUpdate.forEach(({ nodeId, generatedChartLayoutId }) => {
+                editor.state.doc.descendants((node, pos) => {
+                  if (node.type.name === 'chart' && node.attrs.nodeId === nodeId) {
+                    editor.chain()
+                      .command(({ tr }) => {
+                        tr.setNodeMarkup(pos, null, {
+                          ...node.attrs,
+                          chartLayoutId: generatedChartLayoutId
+                        });
+                        return true;
+                      })
+                      .run();
+                  }
+                });
+              });
+            }, 0);
+
+            return true;
+          }
+        } catch (e) {
+          console.log('Not a valid TipTap JSON content:', e);
+          return false;
+        }
+        return false;
+      },
       decorations: (state) => {
         if (hoveredPos === null) return DecorationSet.empty;
         console.log("received the para", hoveredPos);
@@ -470,6 +589,10 @@ export const TipTapEditor = ({ editMode, initialContent, component  , hoveredPos
       window.editor = null;
     }
   })
+
+  const insertTable = () => {
+    editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()
+  }
 
   // Also set it when editor instance changes
   useEffect(() => {
@@ -614,10 +737,6 @@ export const TipTapEditor = ({ editMode, initialContent, component  , hoveredPos
     return null;
   }
 
-  const insertTable = () => {
-    editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()
-  }
-
   const handleCustomEmojiAdded = async (newEmoji) => {
     try {
       // Add to storage
@@ -693,6 +812,22 @@ export const TipTapEditor = ({ editMode, initialContent, component  , hoveredPos
       $isDarkMode={isDarkMode}
     >
       <ControlsContainer>
+        <CopyButton
+          onClick={handleCopy}
+          $isDarkMode={isDarkMode}
+        >
+          {copySuccess ? (
+            <>
+              <Check size={14} />
+              Copied!
+            </>
+          ) : (
+            <>
+              <Copy size={14} />
+              Copy Content
+            </>
+          )}
+        </CopyButton>
         <ToggleSwitch $isDarkMode={isDarkMode}>
           <input 
             type="checkbox"

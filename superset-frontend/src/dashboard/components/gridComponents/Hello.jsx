@@ -334,8 +334,12 @@ export default function Hello(props) {
       acceptedChildren={[CHART_TYPE]}
     >
       {({ dragSourceRef }) => (
-        <HelloDiv ref={dragSourceRef}>
-          <BlockNoteEditor hoveredPos={hoveredPos} setHoveredPos={setHoveredPos} component={component} />
+        <HelloDiv id={component?.id} ref={dragSourceRef}>
+          <BlockNoteEditor
+            handleComponentDrop={props.handleComponentDrop}
+            hoveredPos={hoveredPos}
+            setHoveredPos={setHoveredPos}
+            component={component} />
           {editMode && (
             <DeleteButtonContainer editMode={editMode}>
               <DeleteComponentButton

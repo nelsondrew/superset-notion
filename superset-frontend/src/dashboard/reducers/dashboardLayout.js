@@ -119,10 +119,15 @@ const actionHandlers = {
 
   [CREATE_COMPONENT](state, action) {
     const {
-      payload: { dropResult },
+      payload: { dropResult  },
     } = action;
+    let generatedId = '';
+    if(dropResult?.generatedId) {
+      generatedId = dropResult?.generatedId;
+      delete dropResult?.generatedId;
+    }
 
-    const newEntities = newEntitiesFromDrop({ dropResult, layout: state });
+    const newEntities = newEntitiesFromDrop({ dropResult, layout: state , generatedId });
 
     return {
       ...state,
