@@ -590,6 +590,10 @@ export const TipTapEditor = ({ editMode, initialContent, component  , hoveredPos
     }
   })
 
+  const insertTable = () => {
+    editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()
+  }
+
   // Also set it when editor instance changes
   useEffect(() => {
     if (editor) {
