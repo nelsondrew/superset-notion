@@ -23,13 +23,13 @@ import getComponentWidthFromDrop from './getComponentWidthFromDrop';
 
 import { ROW_TYPE, TABS_TYPE, TAB_TYPE } from './componentTypes';
 
-export default function newEntitiesFromDrop({ dropResult, layout }) {
+export default function newEntitiesFromDrop({ dropResult, layout , generatedId }) {
   const { dragging, destination } = dropResult;
 
   const dragType = dragging.type;
   const dropEntity = layout[destination.id];
   const dropType = dropEntity.type;
-  let newDropChild = newComponentFactory(dragType, dragging.meta);
+  let newDropChild = newComponentFactory(dragType, dragging.meta ,null, generatedId);
   newDropChild.parents = (dropEntity.parents || []).concat(dropEntity.id);
 
   if (componentIsResizable(dragging)) {
