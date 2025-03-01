@@ -8,6 +8,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import { setUnsavedChanges } from 'src/dashboard/actions/dashboardState'
 import { v4 as uuidv4 } from 'uuid'
 import { deleteComponent } from 'src/dashboard/actions/dashboardLayout'
+import ResizableDiv from "./ResizableDiv"
 
 const ChartContainer = styled.div`
   margin: 1rem 0;
@@ -50,7 +51,7 @@ const ChartWrapper = styled.div`
 
 const Chart = styled.div`
   background: #ffffff;
-  border: 2px solid #e2e8f0;
+  border: ${props => props.selected ? '2px solid #3b82f6' : '2px solid #e2e8f0'};
   border-radius: 6px;
   display: flex;
   align-items: center;
@@ -68,7 +69,7 @@ const Chart = styled.div`
   z-index: 1;
 
   &:hover {
-    border-color: ${props => props.editMode ? '#cbd5e1' : '#e2e8f0'};
+    border-color: ${props => props.editMode ? '#3b82f6' : '#e2e8f0'};
     box-shadow: ${props => props.editMode ? '0 2px 4px rgba(0, 0, 0, 0.1)' : '0 1px 3px rgba(0, 0, 0, 0.1)'};
 
     & ~ .resize-handle {
@@ -78,7 +79,7 @@ const Chart = styled.div`
 
   &.ProseMirror-selectednode {
     border-color: ${props => props.editMode ? '#3b82f6' : '#e2e8f0'};
-    outline: ${props => props.editMode ? '2px solid rgba(59, 130, 246, 0.2)' : 'none'};
+    outline: ${props => props.editMode ? '3px solid rgba(59, 130, 246, 0.2)' : 'none'};
     box-shadow: ${props => props.editMode ? '0 2px 4px rgba(59, 130, 246, 0.1)' : '0 1px 3px rgba(0, 0, 0, 0.1)'};
     position: relative;
     z-index: 50;
@@ -343,17 +344,13 @@ export const ResizableChart = (nodeProps) => {
   const dispatch = useDispatch();
 
   const [realSliceId, setRealSliceId] = useState(node.attrs.chartData?.chartId || '');
-  const [dimensions, setDimensions] = useState(() => {
-    return {
-      width: parseInt(node.attrs.width) || 600,
-      height: parseInt(node.attrs.height) || 200
-    };
-  });
-
-  const [wrapperDimensions, setWrapperDimensions] = useState({
-    width: parseInt(node.attrs.width) || 0,
-    height: parseInt(node.attrs.height) || 0
-  });
+  const [wrapperDimensions, setWrapperDimensions] = useState({ width: 600, height: 400 });
+  const [dimensions, setDimensions] = useState({ width: 600, height: 400 });
+  const [isResizing, setIsResizing] = useState(false);
+  const [isInTableCell, setIsInTableCell] = useState(false);
+  const parentCellRef = useRef(null);
+  const lastWidthRef = useRef(null);
+  const resizeFrameRef = useRef(null);
 
   const chartWrapperRef = useRef(null);
   const resizableRef = useRef(null);
@@ -394,36 +391,120 @@ export const ResizableChart = (nodeProps) => {
     }
   }, []);
 
-  const handleResize = (e, direction, ref) => {
-    if (selected) {
-      const width = parseInt(ref.style.width.replace('px', ''));
-      const height = parseInt(ref.style.height.replace('px', ''));
+  // Find parent cell and setup resize observer
+  useEffect(() => {
+    // Find parent cell once
+    if (!parentCellRef.current && chartWrapperRef.current) {
+      let element = chartWrapperRef.current;
+      while (element && !element.matches('td, th')) {
+        element = element.parentElement;
+      }
+      if (element) {
+        parentCellRef.current = element;
+        lastWidthRef.current = element.offsetWidth;
 
-      setDimensions({ width, height });
-      updateAttributes({
-        width: ref.style.width,
-        height: ref.style.height,
-        selected: true
-      });
+        // Setup resize observer for parent cell
+        const observer = new ResizeObserver((entries) => {
+          // Cancel any pending animation frame
+          if (resizeFrameRef.current) {
+            cancelAnimationFrame(resizeFrameRef.current);
+          }
+
+          const entry = entries[0];
+          const newWidth = entry.contentRect.width;
+
+          // Only trigger resize if width actually changed
+          if (newWidth !== lastWidthRef.current) {
+            lastWidthRef.current = newWidth;
+
+            // Use requestAnimationFrame for smoother state updates
+            resizeFrameRef.current = requestAnimationFrame(() => {
+              setIsResizing(true);
+            });
+          }
+        });
+
+        observer.observe(element);
+        return () => {
+          observer.disconnect();
+          if (resizeFrameRef.current) {
+            cancelAnimationFrame(resizeFrameRef.current);
+          }
+        };
+      }
+    }
+  }, [chartWrapperRef.current]);
+
+  // Handle resize end with a separate effect
+  useEffect(() => {
+    if (isResizing) {
+      const timeoutId = setTimeout(() => {
+        setIsResizing(false);
+      }, 1000);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [isResizing]);
+
+  // Check if chart is in table cell
+  useEffect(() => {
+    if (chartWrapperRef.current) {
+      let element = chartWrapperRef.current;
+      while (element && !element.matches('td, th')) {
+        element = element.parentElement;
+      }
+      setIsInTableCell(!!element);
+    }
+  }, [chartWrapperRef.current]);
+
+  // Original resize handlers for the chart itself
+  const handleResize = (e, direction, ref) => {
+    try {
+      if (selected) {
+        const width = parseInt(ref.style.width.replace('px', ''));
+        const height = parseInt(ref.style.height.replace('px', ''));
+
+        // Prevent state updates during table cell resize
+        if (!isInTableCell || !isResizing) {
+          setDimensions({ width, height });
+          updateAttributes({
+            width: ref.style.width,
+            height: ref.style.height,
+            selected: true
+          });
+        }
+      }
+    } catch (error) {
+      console.warn('Resize handler error:', error);
     }
   }
 
   const handleResizeStop = (e, direction, ref) => {
-    const width = parseInt(ref.style.width.replace('px', ''));
-    const height = parseInt(ref.style.height.replace('px', ''));
+    try {
+      const width = parseInt(ref.style.width.replace('px', ''));
+      const height = parseInt(ref.style.height.replace('px', ''));
 
-    setDimensions({ width, height });
+      // Only update dimensions if not in table cell resize
+      if (!isInTableCell || !isResizing) {
+        setDimensions({ width, height });
+        updateAttributes({
+          width: ref.style.width,
+          height: ref.style.height,
+          selected: true
+        });
+      }
 
-    updateAttributes({
-      width: ref.style.width,
-      height: ref.style.height,
-      selected: true
-    });
+      setTimeout(() => {
+        setIsResizing(false);
+      }, 100);
+    } catch (error) {
+      console.warn('Resize stop handler error:', error);
+      setIsResizing(false);
+    }
   }
 
   const handleConfirmDelete = () => {
-    if(node.attrs.chartData?.chartId) {
-      dispatch(deleteComponent(node.attrs?.chartLayoutId , parentComponentId));
+    if (node.attrs.chartData?.chartId) {
+      dispatch(deleteComponent(node.attrs?.chartLayoutId, parentComponentId));
     }
     deleteNode()
     setShowDeleteModal(false)
@@ -541,84 +622,7 @@ export const ResizableChart = (nodeProps) => {
           width={editMode ? dimensions.width : wrapperDimensions.width}
           height={editMode ? dimensions.height : wrapperDimensions.height}
         >
-          <Resizable
-            ref={resizableRef}
-            defaultSize={{
-              width: dimensions.width + 'px',
-              height: dimensions.height + 'px',
-            }}
-            size={{
-              width: dimensions.width + 'px',
-              height: dimensions.height + 'px',
-            }}
-            minHeight={100}
-            minWidth={200}
-            maxWidth="100%"
-            enable={{
-              ...(!editMode ? {
-                top: false,
-                right: false,
-                bottom: false,
-                left: false,
-                topRight: false,
-                bottomRight: false,
-                bottomLeft: false,
-                topLeft: false,
-              } : {
-                top: false,
-                right: true,
-                bottom: true,
-                left: false,
-                topRight: false,
-                bottomRight: true,
-                bottomLeft: false,
-                topLeft: false,
-              })
-            }}
-            handleStyles={{
-              right: {
-                width: '2px',
-                right: '-1px',
-                top: '0',
-                bottom: '0',
-                cursor: 'ew-resize',
-                background: selected ? '#3b82f6' : '#e2e8f0',
-                border: 'none',
-                transition: 'all 0.2s ease',
-                opacity: 0
-              },
-              bottom: {
-                height: '2px',
-                bottom: '-1px',
-                left: '0',
-                right: '0',
-                cursor: 'ns-resize',
-                background: selected ? '#3b82f6' : '#e2e8f0',
-                border: 'none',
-                transition: 'all 0.2s ease',
-                opacity: 0
-              },
-              bottomRight: {
-                width: '6px',
-                height: '6px',
-                bottom: '-2px',
-                right: '-2px',
-                cursor: 'nwse-resize',
-                background: selected ? '#3b82f6' : '#e2e8f0',
-                border: 'none',
-                borderRadius: '50%',
-                transition: 'all 0.2s ease',
-                opacity: 0
-              },
-            }}
-            handleClasses={{
-              right: 'resize-handle',
-              bottom: 'resize-handle',
-              bottomRight: 'resize-handle',
-            }}
-            onResize={handleResize}
-            onResizeStop={handleResizeStop}
-          >
+          <ResizableDiv>
             <Chart
               ref={chartContentRef}
               className={selected ? 'ProseMirror-selectednode' : ''}
@@ -639,17 +643,31 @@ export const ResizableChart = (nodeProps) => {
               )}
 
               {(realSliceId) ? (
-                <PortableChart
-                  sliceId={parseInt(realSliceId)}
-                  width={parseInt(wrapperDimensions.width)}
-                  height={parseInt(wrapperDimensions.height)}
-                  chartLayoutId={editorChartLayoutId}
-                />
+                !isResizing ? (
+                  <PortableChart
+                    sliceId={parseInt(realSliceId)}
+                    width={parseInt(wrapperDimensions.width)}
+                    height={parseInt(wrapperDimensions.height)}
+                    chartLayoutId={editorChartLayoutId}
+                  />
+                ) : (
+                  <div
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                  >
+                    Resizing...
+                  </div>
+                )
               ) : (
                 'Chart'
               )}
             </Chart>
-          </Resizable>
+          </ResizableDiv>
         </ChartWrapper>
         {node.attrs.caption && (
           <Caption

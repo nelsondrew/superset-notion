@@ -9,7 +9,6 @@ import Link from '@tiptap/extension-link'
 import Placeholder from '@tiptap/extension-placeholder'
 import Subscript from '@tiptap/extension-subscript'
 import Superscript from '@tiptap/extension-superscript'
-import Table from '@tiptap/extension-table'
 import TableCell from '@tiptap/extension-table-cell'
 import TableHeader from '@tiptap/extension-table-header'
 import TableRow from '@tiptap/extension-table-row'
@@ -43,6 +42,8 @@ import { CommentsThread } from './CommentsThread'
 import { v4 as uuidv4 } from 'uuid'
 import { createPortal } from 'react-dom'
 import { DecorationSet, Decoration } from 'prosemirror-view'
+import { CustomTable } from './extensions/CustomTable'
+
 
 const EditorContainer = styled.div`
   background: ${props => props.$isDarkMode ? '#1A1B1E' : '#fff'};
@@ -90,13 +91,61 @@ const EditorContainer = styled.div`
     }
 
     table {
+      position: relative;
+      border-collapse: collapse;
+      
       td, th {
         border-color: ${props => props.$isDarkMode ? '#2D2D2D' : '#ced4da'};
         color: ${props => props.$isDarkMode ? '#fff' : 'inherit'};
-        }
+        position: relative;
+        min-width: 100px;
+        padding: 8px;
+      }
 
       th {
         background-color: ${props => props.$isDarkMode ? '#2D2D2D' : '#f8f9fa'};
+      }
+
+      /* Make table resizable in edit mode */
+      ${props => props.editMode && `
+        &[data-table-resizable="true"] {
+          border: 2px solid #e5e7eb;
+          
+          /* Column resize handle */
+          td, th {
+            &:hover::after {
+              content: '';
+              position: absolute;
+              top: 0;
+              right: -3px;
+              width: 6px;
+              height: 100%;
+              background-color: #3b82f6;
+              cursor: col-resize;
+              opacity: 0.5;
+            }
+            
+            &.selectedCell::after {
+              content: '';
+              position: absolute;
+              top: 0;
+              right: -3px;
+              width: 6px;
+              height: 100%;
+              background-color: #3b82f6;
+              cursor: col-resize;
+              opacity: 1;
+            }
+          }
+        }
+      `}
+
+      &[data-table-type='chart'] {
+        border: 2px dashed #3b82f6;
+        
+        td, th {
+          border: 2px dashed #3b82f6;
+        }
       }
     }
 
@@ -312,7 +361,8 @@ const PopoverContainer = styled.div`
   }
 `
 
-export const TipTapEditor = ({ editMode, initialContent, component  , hoveredPos , setHoveredPos }) => {
+export const TipTapEditor = ({ editMode, initialContent, component, hoveredPos, setHoveredPos }) => {
+  const [editorKey, setEditorKey] = useState(0); // Add key to force editor recreation
   const [isMounted, setIsMounted] = useState(false)
   const [isEmojiModalOpen, setIsEmojiModalOpen] = useState(false)
   const [isDarkMode, setIsDarkMode] = useState(false)
@@ -370,8 +420,9 @@ export const TipTapEditor = ({ editMode, initialContent, component  , hoveredPos
       }),
       Subscript,
       Superscript,
-      Table.configure({
+      CustomTable.configure({
         resizable: true,
+        allowTableNodeSelection: true,
         HTMLAttributes: {
           class: 'my-custom-table',
         },
@@ -411,7 +462,7 @@ export const TipTapEditor = ({ editMode, initialContent, component  , hoveredPos
       TabIndent,
       Comment,
     ],
-    editable: editMode,
+    editable: true,
     injectCSS: false,
     content: component?.meta?.editorJson || initialContent, 
     onCreate() {
@@ -482,10 +533,21 @@ export const TipTapEditor = ({ editMode, initialContent, component  , hoveredPos
     };
   }, [editor]);
 
-  // Add this useEffect to update editable state when editMode changes
   useEffect(() => {
     if (editor) {
-      editor.setEditable(editMode)
+      // Set editable state
+      editor.setEditable(editMode);
+      
+      if (editMode) {
+        // Force update to ensure table handlers are initialized
+        const tr = editor.state.tr;
+        editor.view.dispatch(tr);
+        
+        // Focus to ensure handlers are attached
+        setTimeout(() => {
+          editor.commands.focus();
+        }, 0);
+      }
     }
   }, [editor, editMode])
 
@@ -615,7 +677,48 @@ export const TipTapEditor = ({ editMode, initialContent, component  , hoveredPos
   }
 
   const insertTable = () => {
-    editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()
+    editor.chain()
+      .focus()
+      .insertContent({
+        type: 'table',
+        attrs: {
+          'data-table-type': 'normal'
+        },
+        content: [{
+          type: 'tableRow',
+          content: Array(3).fill({
+            type: 'tableHeader',
+            content: [{ type: 'paragraph' }]
+          })
+        },
+        ...Array(2).fill({
+          type: 'tableRow',
+          content: Array(3).fill({
+            type: 'tableCell',
+            content: [{ type: 'paragraph' }]
+          })
+        })]
+      })
+      .run();
+  }
+
+  const insertChartTable = () => {
+    editor.chain()
+      .focus()
+      .insertContent({
+        type: 'table',
+        attrs: {
+          'data-table-type': 'chart'
+        },
+        content: [{
+          type: 'tableRow',
+          content: Array(3).fill({
+            type: 'tableHeader',
+            content: [{ type: 'paragraph' }]
+          })
+        }]
+      })
+      .run();
   }
 
   const handleCustomEmojiAdded = async (newEmoji) => {
@@ -796,10 +899,17 @@ export const TipTapEditor = ({ editMode, initialContent, component  , hoveredPos
         <div className="table-buttons">
           <Button
             onClick={insertTable}
-            title="Insert Table"
+            title="Insert Normal Table"
             $isDarkMode={isDarkMode}
           >
-            Insert Table
+            Insert Normal Table
+          </Button>
+          <Button
+            onClick={insertChartTable}
+            title="Insert Chart Table"
+            $isDarkMode={isDarkMode}
+          >
+            Insert Chart Table
           </Button>
           <Button
             onClick={() => editor.chain().focus().addColumnBefore().run()}
